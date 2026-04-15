@@ -1,0 +1,32 @@
+.dashboard { animation: fadeIn .4s ease; }
+
+.year-tabs { display:flex; gap:.2rem; background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:8px; padding:.2rem; }
+.year-tabs.sm { padding:.15rem; }
+.yt-btn { padding:.3rem .7rem; border-radius:6px; border:none; background:transparent; color:var(--text-secondary); cursor:pointer; font-family:var(--font); font-size:.8rem; font-weight:600; transition:var(--tr);
+  &.active { background:linear-gradient(135deg,var(--primary),var(--primary-light)); color:#fff; box-shadow:0 2px 8px rgba(26,92,46,.4); } }
+
+/* Shareholder progress */
+.sh-progress-list { display:flex; flex-direction:column; }
+.sh-progress-item { display:flex; align-items:center; gap:1rem; padding:.9rem 1.5rem; border-bottom:1px solid var(--border-light);
+  &:last-child { border-bottom:none; }
+  &:hover { background:rgba(26,92,46,.06); } }
+.sh-avatar-sm { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--secondary)); display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1rem; color:#fff; flex-shrink:0; }
+.sh-progress-info { flex:1; min-width:0; }
+.sh-total-row { display:flex; justify-content:space-between; align-items:center; padding:.85rem 1.5rem; background:rgba(200,168,75,.07); border-top:1px solid rgba(200,168,75,.2); font-size:.85rem; }
+
+/* Expense summary */
+.exp-summary-list { display:flex; flex-direction:column; padding:.25rem 0; }
+.exp-summary-item { display:flex; align-items:center; gap:.75rem; padding:.55rem 1.5rem;
+  &:hover { background:rgba(26,92,46,.05); } }
+.exp-label { width:120px; font-size:.75rem; color:var(--text-secondary); flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.exp-track { flex:1; background:rgba(255,255,255,.05); border-radius:4px; height:5px; overflow:hidden; }
+.exp-fill  { height:100%; background:linear-gradient(90deg,var(--primary-light),var(--secondary)); border-radius:4px; transition:width 1.2s cubic-bezier(.4,0,.2,1); min-width:2px; }
+.exp-val   { width:75px; text-align:left; font-size:.75rem; font-weight:700; color:var(--text-primary); }
+
+/* Stats strip */
+.stats-strip { display:flex; gap:1rem; flex-wrap:wrap; background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem 1.5rem; backdrop-filter:blur(20px); }
+.stat-item { display:flex; align-items:center; gap:.75rem; flex:1; min-width:150px; padding:.7rem; background:rgba(255,255,255,.03); border-radius:var(--radius-sm); border:1px solid var(--border-light); transition:var(--tr);
+  &:hover { background:rgba(26,92,46,.1); border-color:var(--border); transform:translateY(-2px); }
+  span { font-size:1.6rem; flex-shrink:0; }
+  .stat-val   { font-size:.95rem; font-weight:800; line-height:1.3; }
+  .stat-label { font-size:.68rem; color:var(--text-muted); margin-top:.1rem; } }

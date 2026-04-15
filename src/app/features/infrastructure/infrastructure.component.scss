@@ -1,0 +1,46 @@
+.infra { animation: fadeIn .4s ease; }
+.infra-summary {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.25rem; backdrop-filter: blur(20px);
+  @media(max-width:900px){ grid-template-columns: repeat(2,1fr); }
+}
+.infra-sum-item { display: flex; align-items: center; gap: .75rem; padding: .5rem; }
+.infra-sum-icon { font-size: 1.6rem; }
+.infra-sum-val  { font-size: 1.1rem; font-weight: 800; margin-bottom: .1rem; }
+.infra-sum-label{ font-size: .72rem; color: var(--text-muted); }
+
+.infra-grid {
+  display: grid; grid-template-columns: repeat(2,1fr); gap: 1.25rem;
+  @media(max-width:900px){ grid-template-columns: 1fr; }
+}
+.infra-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; backdrop-filter: blur(20px); transition: var(--tr);
+  &:hover{ transform: translateY(-3px); box-shadow: var(--shadow); }
+}
+.infra-card-head {
+  padding: 1.25rem; display: flex; align-items: center; gap: 1rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.infra-icon { font-size: 2rem; }
+.infra-meta { flex: 1;
+  h3{ font-size: .95rem; font-weight: 700; } }
+.infra-stats {
+  display: grid; grid-template-columns: repeat(2,1fr); gap: 0;
+}
+.infra-stat {
+  padding: .85rem 1rem; border-bottom: 1px solid var(--border-light); border-left: 1px solid var(--border-light);
+  &:nth-child(even){ border-left: none; }
+  &:nth-last-child(-n+2){ border-bottom: none; }
+}
+.infra-stat-label{ font-size: .7rem; color: var(--text-muted); margin-bottom: .2rem; }
+.infra-stat-val  { font-size: .92rem; font-weight: 700; }
+.infra-depreciation { padding: .85rem 1rem; border-bottom: 1px solid var(--border-light); }
+.infra-footer {
+  padding: .85rem 1rem; display: flex; align-items: center; justify-content: space-between;
+}
+.btn-warning { background: linear-gradient(135deg,#e65100,#f57c00); color: #fff;
+  &:hover{ transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,124,0,.4); } }
+.crop-badge { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem 1rem; background: rgba(255,255,255,.05); border-radius: 8px; border: 1px solid var(--border); }
+.modal-form { display: flex; flex-direction: column; gap: 1rem; }

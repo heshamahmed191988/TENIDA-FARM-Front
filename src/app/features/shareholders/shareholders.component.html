@@ -1,0 +1,277 @@
+<div class="shareholders animate-fade">
+
+  <!-- Header -->
+  <div class="section-hdr">
+    <div>
+      <h2>👥 إدارة المساهمين</h2>
+      <p>متابعة الأقساط والمساهمات لكل شريك • الجدول من ملف الإكسيل</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" (click)="load()">🔄 تحديث</button>
+  </div>
+
+  <div class="loading-wrap" *ngIf="loading()">
+    <div class="spinner"></div><p>جاري تحميل بيانات المساهمين...</p>
+  </div>
+
+  <ng-container *ngIf="!loading()">
+
+    <!-- Summary strip -->
+    <div class="sh-summary mb-3" *ngIf="summary()">
+      <div class="sh-sum-item">
+        <div class="sh-sum-val">4</div>
+        <div class="sh-sum-label">المساهمون</div>
+      </div>
+      <div class="sh-sum-item">
+        <div class="sh-sum-val text-gold">760,000 ﷼</div>
+        <div class="sh-sum-label">إجمالي رأس المال</div>
+      </div>
+      <div class="sh-sum-item">
+        <div class="sh-sum-val text-success">{{ fmt(summary()?.totalPaidSar || 0) }} ﷼</div>
+        <div class="sh-sum-label">إجمالي المسدد</div>
+      </div>
+      <div class="sh-sum-item">
+        <div class="sh-sum-val" [class.text-danger]="summary()?.totalDifferenceSar < 0" [class.text-success]="summary()?.totalDifferenceSar >= 0">
+          {{ fmt(Math.abs(summary()?.totalDifferenceSar || 0)) }} ﷼
+        </div>
+        <div class="sh-sum-label">{{ summary()?.totalDifferenceSar < 0 ? 'إجمالي المتأخرات' : 'الفائض' }}</div>
+      </div>
+    </div>
+
+    <!-- Shareholder cards grid -->
+    <div class="sh-grid mb-3">
+      <div *ngFor="let sh of shareholders(); let i=index; trackBy: trackById"
+           class="sh-card animate-slide"
+           [style.animationDelay]="(i*0.1)+'s'"
+           [class.overdue]="sh.balanceSar < 0">
+
+        <!-- Card header -->
+        <div class="sh-card-header">
+          <div class="sh-card-avatar">{{ sh.nameAr.charAt(2) }}</div>
+          <div class="sh-card-meta">
+            <h3>{{ sh.nameAr }}</h3>
+            <p>{{ sh.nameEn }}</p>
+            <span class="badge" [class.badge-success]="sh.balanceSar>=0" [class.badge-danger]="sh.balanceSar<0">
+              {{ sh.ownershipPercentage }}% حصة
+            </span>
+          </div>
+          <button class="btn btn-ghost btn-sm" (click)="selectShareholder(sh)">تفاصيل ←</button>
+        </div>
+
+        <!-- Progress -->
+        <div class="sh-card-progress">
+          <div class="d-flex justify-between mb-1">
+            <span class="text-sm text-muted">نسبة السداد</span>
+            <span class="text-sm fw-800 text-gold">{{ sh.paymentProgressPct.toFixed(1) }}%</span>
+          </div>
+          <div class="progress" style="height:10px">
+            <div class="progress-bar" [style.width.%]="sh.paymentProgressPct" [style.background]="getProgressColor(sh)"></div>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="sh-card-stats">
+          <div class="sh-stat">
+            <div class="sh-stat-label">المطلوب</div>
+            <div class="sh-stat-val">{{ fmt(sh.totalRequiredSar) }} ﷼</div>
+          </div>
+          <div class="sh-stat">
+            <div class="sh-stat-label">المسدد</div>
+            <div class="sh-stat-val text-success">{{ fmt(sh.totalPaidSar) }} ﷼</div>
+          </div>
+          <div class="sh-stat">
+            <div class="sh-stat-label">{{ sh.balanceSar < 0 ? 'متأخر' : 'فائض' }}</div>
+            <div class="sh-stat-val" [class.text-danger]="sh.balanceSar<0" [class.text-success]="sh.balanceSar>=0">
+              {{ fmt(Math.abs(sh.balanceSar)) }} ﷼
+            </div>
+          </div>
+        </div>
+
+        <!-- Installments mini -->
+        <div class="sh-installments">
+          <div *ngFor="let inst of sh.installments.slice(0,9)"
+               class="inst-dot"
+               [class]="'inst-' + inst.status.toLowerCase()"
+               [title]="'قسط '+inst.installmentNumber+': '+statusLabel(inst.status)+' - '+fmt(inst.paidAmountSar)+'/'+fmt(inst.scheduledAmountSar)+' ﷼'"
+               (click)="openPayModal(sh, inst)">
+            {{ inst.installmentNumber }}
+          </div>
+        </div>
+        <div class="d-flex gap-1 text-sm mt-1" style="padding:0 0 .5rem">
+          <span class="chip">✓ مسدد</span>
+          <span class="chip chip-warn">◑ جزئي</span>
+          <span class="chip chip-danger">⚠ متأخر</span>
+          <span class="chip chip-info">○ قادم</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full installment schedule table -->
+    <div class="card">
+      <div class="card-header">
+        <h3>📅 جدول الأقساط التفصيلي</h3>
+        <span class="badge badge-gold">9 أقساط × 4 مساهمين</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>القسط</th>
+                <th>تاريخ الاستحقاق</th>
+                <th>المبلغ ﷼</th>
+                <th *ngFor="let sh of shareholders()">{{ sh.nameAr }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let q of [1,2,3,4,5,6,7,8,9]">
+                <td class="fw-bold text-gold">Q{{ q }}</td>
+                <td class="text-sm">{{ formatDate(shareholders()[0]?.installments[q-1]?.dueDate) }}</td>
+                <td class="fw-bold">{{ fmt(shareholders()[0]?.installments[q-1]?.scheduledAmountSar) }} ﷼</td>
+                <td *ngFor="let sh of shareholders()">
+                  <div *ngIf="sh.installments[q-1] as inst" class="inst-cell">
+                    <span class="badge" [class]="statusBadge(inst.status)">
+                      {{ statusLabel(inst.status) }}
+                    </span>
+                    <div class="text-sm text-muted">{{ fmt(inst.paidAmountSar) }}/{{ fmt(inst.scheduledAmountSar) }}</div>
+                    <button *ngIf="inst.status !== 'Paid'"
+                            class="btn btn-icon btn-sm mt-1"
+                            title="تسجيل دفعة"
+                            (click)="openPayModal(sh, inst)">💳</button>
+                  </div>
+                </td>
+              </tr>
+              <!-- Totals row -->
+              <tr class="totals-row">
+                <td colspan="2" class="fw-bold text-gold">الإجمالي</td>
+                <td class="fw-bold">{{ fmt(shareholders()[0]?.totalRequiredSar || 0) }} ﷼</td>
+                <td *ngFor="let sh of shareholders()" class="fw-bold">
+                  <div class="text-success">{{ fmt(sh.totalPaidSar) }} ﷼</div>
+                  <div [class.text-danger]="sh.balanceSar<0" [class.text-success]="sh.balanceSar>=0" class="text-sm">
+                    الفرق: {{ fmt(sh.balanceSar) }}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>
+
+<!-- ── Detail Modal ──────────────────────────────────────────── -->
+<div class="modal-overlay" *ngIf="showDetailModal() && selected()" (click)="showDetailModal.set(false)">
+  <div class="modal lg" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>👤 تفاصيل المساهم: {{ selected()!.nameAr }}</h3>
+      <button class="close-btn" (click)="showDetailModal.set(false)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="grid-2 mb-3">
+        <div class="detail-stat">
+          <div class="detail-stat-label">إجمالي المطلوب</div>
+          <div class="detail-stat-val">{{ fmt(selected()!.totalRequiredSar) }} ﷼</div>
+        </div>
+        <div class="detail-stat">
+          <div class="detail-stat-label">إجمالي المسدد</div>
+          <div class="detail-stat-val text-success">{{ fmt(selected()!.totalPaidSar) }} ﷼</div>
+        </div>
+        <div class="detail-stat">
+          <div class="detail-stat-label">الرصيد</div>
+          <div class="detail-stat-val" [class.text-danger]="selected()!.balanceSar<0" [class.text-success]="selected()!.balanceSar>=0">
+            {{ fmt(selected()!.balanceSar) }} ﷼
+          </div>
+        </div>
+        <div class="detail-stat">
+          <div class="detail-stat-label">نسبة الملكية</div>
+          <div class="detail-stat-val text-gold">{{ selected()!.ownershipPercentage }}%</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="tbl">
+          <thead><tr><th>#</th><th>الاستحقاق</th><th>المطلوب</th><th>المسدد</th><th>المتبقي</th><th>الحالة</th><th>إجراء</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let inst of selected()!.installments">
+              <td class="fw-bold text-gold">{{ inst.installmentNumber }}</td>
+              <td class="text-sm">{{ formatDate(inst.dueDate) }}</td>
+              <td>{{ fmt(inst.scheduledAmountSar) }} ﷼</td>
+              <td class="text-success">{{ fmt(inst.paidAmountSar) }} ﷼</td>
+              <td [class.text-danger]="inst.remainingAmountSar>0">{{ fmt(inst.remainingAmountSar) }} ﷼</td>
+              <td><span class="badge" [class]="statusBadge(inst.status)">{{ statusLabel(inst.status) }}</span></td>
+              <td>
+                <button *ngIf="inst.status !== 'Paid'" class="btn btn-icon btn-sm"
+                        (click)="openPayModal(selected()!, inst); showDetailModal.set(false)">💳</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="showDetailModal.set(false)">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Pay Modal ─────────────────────────────────────────────── -->
+<div class="modal-overlay" *ngIf="showPayModal()" (click)="showPayModal.set(false)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>💳 تسجيل دفعة قسط</h3>
+      <button class="close-btn" (click)="showPayModal.set(false)">✕</button>
+    </div>
+    <div class="modal-body" *ngIf="payInstallment()">
+      <div class="pay-info mb-3">
+        <div class="pay-info-row">
+          <span>المساهم:</span>
+          <span class="fw-bold">{{ selected()?.nameAr }}</span>
+        </div>
+        <div class="pay-info-row">
+          <span>القسط رقم:</span>
+          <span class="fw-bold text-gold">{{ payInstallment()!.installmentNumber }}</span>
+        </div>
+        <div class="pay-info-row">
+          <span>المبلغ المطلوب:</span>
+          <span class="fw-bold">{{ fmt(payInstallment()!.scheduledAmountSar) }} ﷼</span>
+        </div>
+        <div class="pay-info-row">
+          <span>المسدد حتى الآن:</span>
+          <span class="fw-bold text-success">{{ fmt(payInstallment()!.paidAmountSar) }} ﷼</span>
+        </div>
+        <div class="pay-info-row">
+          <span>المتبقي:</span>
+          <span class="fw-bold text-danger">{{ fmt(payInstallment()!.remainingAmountSar) }} ﷼</span>
+        </div>
+      </div>
+      <form [formGroup]="payForm" class="modal-form">
+        <div class="form-group">
+          <label>المبلغ المدفوع (ريال) *</label>
+          <input type="number" class="form-control" formControlName="amount"
+                 [max]="payInstallment()!.remainingAmountSar" min="1">
+          <div class="field-error" *ngIf="payForm.get('amount')?.invalid && payForm.get('amount')?.touched">
+            أدخل مبلغاً صحيحاً
+          </div>
+        </div>
+        <div class="form-group">
+          <label>تاريخ الدفع</label>
+          <input type="date" class="form-control" formControlName="paymentDate">
+        </div>
+        <div class="form-group">
+          <label>رقم الإيصال</label>
+          <input type="text" class="form-control" formControlName="receiptReference" placeholder="اختياري">
+        </div>
+        <div class="form-group">
+          <label>ملاحظات</label>
+          <input type="text" class="form-control" formControlName="notes" placeholder="اختياري">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="showPayModal.set(false)">إلغاء</button>
+      <button class="btn btn-primary" (click)="recordPayment()" [disabled]="saving()">
+        <span class="spinner-sm" *ngIf="saving()"></span>
+        {{ saving() ? 'جاري التسجيل...' : 'تأكيد الدفعة 💳' }}
+      </button>
+    </div>
+  </div>
+</div>

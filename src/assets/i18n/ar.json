@@ -1,0 +1,112 @@
+{
+  "APP_TITLE": "نظام إدارة مزرعة تنيدة",
+  "FARM_NAME": "مزرعة تنيدة",
+  "NAV": {
+    "DASHBOARD": "لوحة التحكم",
+    "FINANCE": "المالية",
+    "SHAREHOLDERS": "المساهمون",
+    "AGRICULTURE": "الزراعة",
+    "INFRASTRUCTURE": "البنية التحتية",
+    "OPERATIONS": "العمليات",
+    "REPORTS": "التقارير"
+  },
+  "AUTH": {
+    "LOGIN": "تسجيل الدخول",
+    "LOGOUT": "تسجيل الخروج",
+    "USERNAME": "اسم المستخدم",
+    "PASSWORD": "كلمة المرور",
+    "LOGIN_BTN": "تسجيل الدخول",
+    "LOGIN_ERROR": "اسم المستخدم أو كلمة المرور غير صحيحة"
+  },
+  "COMMON": {
+    "LOADING": "جاري التحميل...",
+    "SAVE": "حفظ",
+    "CANCEL": "إلغاء",
+    "DELETE": "حذف",
+    "EDIT": "تعديل",
+    "ADD": "إضافة",
+    "CLOSE": "إغلاق",
+    "CONFIRM": "تأكيد",
+    "REFRESH": "تحديث",
+    "EXPORT": "تصدير",
+    "SEARCH": "بحث",
+    "FILTER": "فلتر",
+    "ALL": "الكل",
+    "YES": "نعم",
+    "NO": "لا",
+    "SAR": "ريال سعودي",
+    "EGP": "جنيه مصري",
+    "FEDDAN": "فدان",
+    "KG": "كجم",
+    "NO_DATA": "لا توجد بيانات"
+  },
+  "FINANCE": {
+    "LEDGER": "دفتر الأستاذ العام",
+    "TRANSACTION": "معاملة",
+    "INCOME": "وارد",
+    "EXPENSE": "مصروف",
+    "BALANCE": "رصيد",
+    "RUNNING_BALANCE": "الرصيد المتراكم",
+    "TOTAL_INCOME": "إجمالي الوارد",
+    "TOTAL_EXPENSE": "إجمالي المصروف",
+    "CURRENT_BALANCE": "الرصيد الحالي",
+    "DATE": "التاريخ",
+    "DESCRIPTION": "البيان",
+    "CATEGORY": "التصنيف",
+    "RECEIPT_NO": "رقم الإيصال",
+    "ADD_TRANSACTION": "إضافة معاملة",
+    "RECALCULATE": "إعادة حساب الأرصدة"
+  },
+  "SHAREHOLDERS": {
+    "TITLE": "المساهمون",
+    "INSTALLMENT": "قسط",
+    "DUE_DATE": "تاريخ الاستحقاق",
+    "SCHEDULED": "المطلوب",
+    "PAID": "المسدد",
+    "REMAINING": "المتبقي",
+    "STATUS_PAID": "مسدد",
+    "STATUS_OVERDUE": "متأخر",
+    "STATUS_PARTIAL": "جزئي",
+    "STATUS_UPCOMING": "قادم",
+    "RECORD_PAYMENT": "تسجيل دفعة"
+  },
+  "AGRICULTURE": {
+    "TITLE": "الزراعة",
+    "CROP": "محصول",
+    "CYCLE": "دورة زراعية",
+    "HARVEST": "حصاد",
+    "AREA": "المساحة",
+    "QUANTITY": "الكمية",
+    "REVENUE": "الإيراد",
+    "COST": "التكلفة",
+    "ADD_CYCLE": "إضافة دورة",
+    "ADD_HARVEST": "تسجيل حصاد"
+  },
+  "INFRASTRUCTURE": {
+    "TITLE": "البنية التحتية",
+    "ASSET": "أصل",
+    "MAINTENANCE": "صيانة",
+    "OPERATIONAL": "تشغيلي",
+    "NON_OPERATIONAL": "متوقف",
+    "TOTAL_COST": "التكلفة الكلية",
+    "BOOK_VALUE": "القيمة الدفترية",
+    "DEPRECIATION": "الاستهلاك",
+    "REQUEST_MAINTENANCE": "طلب صيانة"
+  },
+  "OPERATIONS": {
+    "TITLE": "العمليات",
+    "WORKERS": "العمال",
+    "PAYROLL": "كشف الرواتب",
+    "SALARY": "الراتب",
+    "BONUS": "مكافأة",
+    "DEDUCTION": "خصم",
+    "NET_SALARY": "الراتب الصافي",
+    "ADD_WORKER": "إضافة عامل",
+    "PAY_SALARY": "صرف راتب"
+  },
+  "MONTHS": {
+    "1": "يناير", "2": "فبراير", "3": "مارس", "4": "أبريل",
+    "5": "مايو", "6": "يونيو", "7": "يوليو", "8": "أغسطس",
+    "9": "سبتمبر", "10": "أكتوبر", "11": "نوفمبر", "12": "ديسمبر"
+  }
+}

@@ -1,0 +1,273 @@
+<div class="agriculture animate-fade">
+
+  <div class="section-hdr">
+    <div>
+      <h2>🌾 إدارة الزراعة والمحاصيل</h2>
+      <p>تتبع دورات الزراعة والحصاد والإيرادات الزراعية</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" (click)="load()">🔄 تحديث</button>
+  </div>
+
+  <div class="loading-wrap" *ngIf="loading()">
+    <div class="spinner"></div><p>جاري تحميل بيانات الزراعة...</p>
+  </div>
+
+  <ng-container *ngIf="!loading()">
+
+    <!-- Revenue summary strip -->
+    <div class="ag-summary mb-3">
+      <div class="ag-sum-item green">
+        <span>🌿</span>
+        <div>
+          <div class="ag-sum-val">{{ fmt(1196700) }} ﷼</div>
+          <div class="ag-sum-label">إيرادات البرسيم الحجازي</div>
+        </div>
+      </div>
+      <div class="ag-sum-item teal">
+        <span>🌾</span>
+        <div>
+          <div class="ag-sum-val">{{ fmt(1122000) }} ﷼</div>
+          <div class="ag-sum-label">إيرادات الزراعة الموسمية</div>
+        </div>
+      </div>
+      <div class="ag-sum-item gold">
+        <span>📊</span>
+        <div>
+          <div class="ag-sum-val">{{ fmt(totalRevenue()) }} ﷼</div>
+          <div class="ag-sum-label">إجمالي الإيرادات الزراعية</div>
+        </div>
+      </div>
+      <div class="ag-sum-item red">
+        <span>💸</span>
+        <div>
+          <div class="ag-sum-val">{{ fmt(totalCost()) }} ﷼</div>
+          <div class="ag-sum-label">إجمالي التكاليف الزراعية</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Crop cards -->
+    <div class="crop-grid mb-3">
+      <div *ngFor="let crop of crops(); let i=index"
+           class="crop-card animate-slide"
+           [style.animationDelay]="(i*0.07)+'s'"
+           [style.borderColor]="cropColor(crop.cropType)+'55'">
+
+        <div class="crop-card-head" [style.background]="cropColor(crop.cropType)+'18'">
+          <span class="crop-icon">{{ cropIcon(crop.cropType) }}</span>
+          <div class="crop-meta">
+            <h3>{{ crop.nameAr }}</h3>
+            <p class="text-muted text-sm">{{ crop.nameEn }}</p>
+            <span class="badge" [class.badge-success]="crop.isActive" [class.badge-danger]="!crop.isActive">
+              {{ crop.isActive ? '● نشط' : '○ غير نشط' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="crop-stats">
+          <div class="crop-stat">
+            <div class="crop-stat-label">الإيرادات</div>
+            <div class="crop-stat-val text-success">{{ fmt(crop.totalRevenueSar) }} ﷼</div>
+          </div>
+          <div class="crop-stat">
+            <div class="crop-stat-label">التكاليف</div>
+            <div class="crop-stat-val text-danger">{{ fmt(crop.totalCostSar) }} ﷼</div>
+          </div>
+          <div class="crop-stat">
+            <div class="crop-stat-label">الدورات</div>
+            <div class="crop-stat-val text-gold">{{ crop.totalCycles }}</div>
+          </div>
+          <div class="crop-stat">
+            <div class="crop-stat-label">صافي الربح</div>
+            <div class="crop-stat-val"
+                 [class.text-success]="crop.netProfitSar > 0"
+                 [class.text-danger]="crop.netProfitSar < 0">
+              {{ fmt(crop.netProfitSar) }} ﷼
+            </div>
+          </div>
+        </div>
+
+        <div class="crop-card-footer" *ngIf="crop.description">
+          <span class="text-muted text-sm">{{ crop.description }}</span>
+        </div>
+
+        <div class="crop-actions">
+          <button class="btn btn-ghost btn-sm" (click)="openCropDetail(crop)">📋 التفاصيل</button>
+          <button class="btn btn-primary btn-sm" (click)="openCycleModal(crop)" *ngIf="crop.isActive">
+            ➕ دورة جديدة
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active cycles -->
+    <div class="card mb-3" *ngIf="activeCycles().length">
+      <div class="card-header">
+        <h3>🔄 الدورات الزراعية النشطة</h3>
+        <span class="badge badge-success">{{ activeCycles().length }} دورة</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-wrap">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>الدورة</th>
+                <th>المحصول</th>
+                <th>تاريخ الزراعة</th>
+                <th>الحصاد المتوقع</th>
+                <th>المساحة (فدان)</th>
+                <th>الإيرادات</th>
+                <th>التكاليف</th>
+                <th>إجراء</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let cycle of activeCycles()">
+                <td class="fw-bold">{{ cycle.cycleName }}</td>
+                <td><span class="chip">{{ cropIcon(cycle.cropId) }} محصول</span></td>
+                <td class="text-sm">{{ fmtDate(cycle.plantingDate) }}</td>
+                <td class="text-sm">{{ fmtDate(cycle.expectedHarvestDate || '') }}</td>
+                <td>{{ cycle.areaFeddan }} فدان</td>
+                <td class="text-success fw-bold">{{ fmt(cycle.totalRevenueSar) }} ﷼</td>
+                <td class="text-danger">{{ fmt(cycle.totalCostSar) }} ﷼</td>
+                <td>
+                  <button class="btn btn-secondary btn-sm" (click)="openHarvestModal(cycle)">
+                    🌾 تسجيل حصاد
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue chart placeholder -->
+    <div class="card">
+      <div class="card-header">
+        <h3>📊 مقارنة إيرادات المحاصيل</h3>
+        <span class="badge badge-gold">2024-2025</span>
+      </div>
+      <div class="card-body">
+        <div class="rev-chart">
+          <div *ngFor="let crop of crops()"
+               class="rev-bar-row"
+               [style.display]="crop.totalRevenueSar > 0 ? 'flex' : 'none'">
+            <span class="rev-label">{{ cropIcon(crop.cropType) }} {{ crop.nameAr }}</span>
+            <div class="rev-track">
+              <div class="rev-fill"
+                   [style.width.%]="(crop.totalRevenueSar / 2000000) * 100"
+                   [style.background]="cropColor(crop.cropType)">
+              </div>
+            </div>
+            <span class="rev-val">{{ fmt(crop.totalRevenueSar) }} ﷼</span>
+          </div>
+          <div class="text-muted text-sm mt-2" *ngIf="noCropRevenue()">
+            لا توجد إيرادات مسجلة بعد
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>
+
+<!-- Add cycle modal -->
+<div class="modal-overlay" *ngIf="showCycleModal()" (click)="showCycleModal.set(false)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>🌱 إضافة دورة زراعية جديدة</h3>
+      <button class="close-btn" (click)="showCycleModal.set(false)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="crop-badge mb-3" *ngIf="selectedCrop()">
+        <span>{{ cropIcon(selectedCrop()!.cropType) }}</span>
+        <span class="fw-bold">{{ selectedCrop()!.nameAr }}</span>
+      </div>
+      <form [formGroup]="cycleForm" class="modal-form">
+        <div class="form-group">
+          <label>اسم الدورة *</label>
+          <input type="text" class="form-control" formControlName="cycleName" placeholder="مثال: موسم البرسيم الأول 2025">
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>تاريخ الزراعة *</label>
+            <input type="date" class="form-control" formControlName="plantingDate">
+          </div>
+          <div class="form-group">
+            <label>الحصاد المتوقع</label>
+            <input type="date" class="form-control" formControlName="expectedHarvestDate">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>المساحة (فدان) *</label>
+            <input type="number" class="form-control" formControlName="areaFeddan" min="0.1" step="0.5">
+          </div>
+          <div class="form-group">
+            <label>تكلفة التقاوي (ريال)</label>
+            <input type="number" class="form-control" formControlName="seedCostSar" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>ملاحظات</label>
+          <input type="text" class="form-control" formControlName="notes">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="showCycleModal.set(false)">إلغاء</button>
+      <button class="btn btn-primary" (click)="saveCycle()" [disabled]="saving()">
+        <span class="spinner-sm" *ngIf="saving()"></span>
+        {{ saving() ? 'جاري الحفظ...' : '🌱 إضافة الدورة' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Add harvest modal -->
+<div class="modal-overlay" *ngIf="showHarvestModal()" (click)="showHarvestModal.set(false)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>🌾 تسجيل حصاد</h3>
+      <button class="close-btn" (click)="showHarvestModal.set(false)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="crop-badge mb-3" *ngIf="selectedCycle()">
+        <span>📋</span><span class="fw-bold">{{ selectedCycle()!.cycleName }}</span>
+      </div>
+      <form [formGroup]="harvestForm" class="modal-form">
+        <div class="form-group">
+          <label>تاريخ الحصاد *</label>
+          <input type="date" class="form-control" formControlName="harvestDate">
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>الكمية (كجم) *</label>
+            <input type="number" class="form-control" formControlName="quantityKg" min="1">
+          </div>
+          <div class="form-group">
+            <label>السعر (ريال/كجم) *</label>
+            <input type="number" class="form-control" formControlName="pricePerKgSar" min="0" step="0.5">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>المشتري</label>
+          <input type="text" class="form-control" formControlName="buyerName">
+        </div>
+        <div class="harvest-calc" *ngIf="harvestForm.value.quantityKg && harvestForm.value.pricePerKgSar">
+          <span>الإيراد المتوقع:</span>
+          <span class="text-success fw-800">
+            {{ fmt((harvestForm.value.quantityKg || 0) * (harvestForm.value.pricePerKgSar || 0)) }} ﷼
+          </span>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="showHarvestModal.set(false)">إلغاء</button>
+      <button class="btn btn-secondary" (click)="saveHarvest()" [disabled]="saving()">
+        <span class="spinner-sm" *ngIf="saving()"></span>
+        {{ saving() ? 'جاري الحفظ...' : '🌾 تسجيل الحصاد' }}
+      </button>
+    </div>
+  </div>
+</div>

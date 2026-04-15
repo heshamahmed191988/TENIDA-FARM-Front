@@ -1,0 +1,291 @@
+<div class="operations animate-fade">
+
+  <div class="section-hdr">
+    <div>
+      <h2>⚙️ إدارة العمليات والعمال</h2>
+      <p>إدارة العمال والرواتب والعمليات اليومية</p>
+    </div>
+    <div class="d-flex gap-1">
+      <button class="btn btn-ghost btn-sm" (click)="openPayrollSheet()">📋 كشف الرواتب</button>
+      <button class="btn btn-primary btn-sm" (click)="openAddWorker()">➕ عامل جديد</button>
+    </div>
+  </div>
+
+  <div class="loading-wrap" *ngIf="loading()">
+    <div class="spinner"></div><p>جاري تحميل بيانات العمال...</p>
+  </div>
+
+  <ng-container *ngIf="!loading()">
+
+    <!-- Salary summary -->
+    <div class="ops-summary mb-3">
+      <div class="ops-sum-item green">
+        <span class="ops-sum-icon">👷</span>
+        <div>
+          <div class="ops-sum-val">{{ workers().length }}</div>
+          <div class="ops-sum-label">إجمالي العمال</div>
+        </div>
+      </div>
+      <div class="ops-sum-item blue">
+        <span class="ops-sum-icon">✅</span>
+        <div>
+          <div class="ops-sum-val">{{ activeWorkerCount() }}</div>
+          <div class="ops-sum-label">عمال نشطون</div>
+        </div>
+      </div>
+      <div class="ops-sum-item gold">
+        <span class="ops-sum-icon">💵</span>
+        <div>
+          <div class="ops-sum-val">{{ fmt(totalMonthlySalary()) }} ﷼</div>
+          <div class="ops-sum-label">إجمالي الرواتب الشهرية</div>
+        </div>
+      </div>
+      <div class="ops-sum-item purple">
+        <span class="ops-sum-icon">📊</span>
+        <div>
+          <div class="ops-sum-val">{{ fmt(totalSalariesPaid()) }} ﷼</div>
+          <div class="ops-sum-label">إجمالي المصروف على الرواتب</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Workers cards -->
+    <div class="workers-grid mb-3">
+      <div *ngFor="let w of workers(); let i=index"
+           class="worker-card animate-slide"
+           [style.animationDelay]="(i*0.1)+'s'"
+           [class.inactive]="!w.isActive">
+
+        <div class="worker-header">
+          <div class="worker-avatar">
+            <span>{{ w.nameAr.charAt(0) }}</span>
+            <div class="worker-status" [class.active]="w.isActive"></div>
+          </div>
+          <div class="worker-meta">
+            <h3>{{ w.nameAr }}</h3>
+            <p class="text-muted text-sm">{{ w.role }}</p>
+            <span class="badge" [class.badge-success]="w.isActive" [class.badge-danger]="!w.isActive">
+              {{ w.isActive ? '● نشط' : '○ متوقف' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="worker-stats">
+          <div class="worker-stat">
+            <div class="worker-stat-label">الراتب الشهري</div>
+            <div class="worker-stat-val text-gold">{{ fmt(w.monthlySalarySar) }} ﷼</div>
+          </div>
+          <div class="worker-stat">
+            <div class="worker-stat-label">الراتب السنوي</div>
+            <div class="worker-stat-val">{{ fmt(w.monthlySalarySar * 12) }} ﷼</div>
+          </div>
+          <div class="worker-stat">
+            <div class="worker-stat-label">تاريخ التعيين</div>
+            <div class="worker-stat-val text-sm">{{ fmtDate(w.hireDate) }}</div>
+          </div>
+          <div class="worker-stat" *ngIf="w.phone">
+            <div class="worker-stat-label">الهاتف</div>
+            <div class="worker-stat-val text-sm">{{ w.phone }}</div>
+          </div>
+        </div>
+
+        <div class="worker-actions">
+          <button class="btn btn-ghost btn-sm" (click)="openEditWorker(w)">✏️ تعديل</button>
+          <button class="btn btn-secondary btn-sm" (click)="openPaySalary(w)" *ngIf="w.isActive">💵 صرف راتب</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Salary expense reference -->
+    <div class="card">
+      <div class="card-header">
+        <h3>📊 إحصائيات الرواتب التاريخية</h3>
+        <span class="badge badge-gold">من سجل الإكسيل 2024-2025</span>
+      </div>
+      <div class="card-body">
+        <div class="salary-ref">
+          <div class="salary-ref-item">
+            <span class="salary-ref-name">محمد رجب (مدير المزرعة)</span>
+            <div class="salary-ref-bar">
+              <div class="salary-ref-fill" style="width:70%"></div>
+            </div>
+            <span class="salary-ref-val text-gold">15,000 ﷼ / شهر</span>
+          </div>
+          <div class="salary-ref-item">
+            <span class="salary-ref-name">السيد (مشرف الحقل)</span>
+            <div class="salary-ref-bar">
+              <div class="salary-ref-fill" style="width:30%;background:#4caf50"></div>
+            </div>
+            <span class="salary-ref-val text-success">6,500 ﷼ / شهر</span>
+          </div>
+          <div class="divider"></div>
+          <div class="d-flex justify-between">
+            <span class="text-muted">إجمالي الرواتب المصروفة (2024-2025)</span>
+            <span class="fw-800 text-gold">585,500 ﷼</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>
+
+<!-- Worker form modal -->
+<div class="modal-overlay" *ngIf="showWorkerModal()" (click)="showWorkerModal.set(false)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ editMode() ? '✏️ تعديل بيانات عامل' : '➕ إضافة عامل جديد' }}</h3>
+      <button class="close-btn" (click)="showWorkerModal.set(false)">✕</button>
+    </div>
+    <div class="modal-body">
+      <form [formGroup]="workerForm" class="modal-form">
+        <div class="grid-2">
+          <div class="form-group">
+            <label>الاسم بالعربية *</label>
+            <input type="text" class="form-control" formControlName="nameAr">
+          </div>
+          <div class="form-group">
+            <label>الاسم بالإنجليزية</label>
+            <input type="text" class="form-control" formControlName="nameEn">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>الدور الوظيفي *</label>
+          <input type="text" class="form-control" formControlName="role" placeholder="مثال: مدير المزرعة">
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>الراتب الشهري (ريال) *</label>
+            <input type="number" class="form-control" formControlName="monthlySalarySar" min="1">
+          </div>
+          <div class="form-group">
+            <label>تاريخ التعيين *</label>
+            <input type="date" class="form-control" formControlName="hireDate">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>رقم الهاتف</label>
+          <input type="text" class="form-control" formControlName="phone" placeholder="اختياري">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="showWorkerModal.set(false)">إلغاء</button>
+      <button class="btn btn-primary" (click)="saveWorker()" [disabled]="saving()">
+        <span class="spinner-sm" *ngIf="saving()"></span>
+        {{ saving() ? 'جاري الحفظ...' : (editMode() ? 'تحديث' : 'إضافة العامل') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Pay salary modal -->
+<div class="modal-overlay" *ngIf="showPayModal()" (click)="showPayModal.set(false)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>💵 صرف راتب</h3>
+      <button class="close-btn" (click)="showPayModal.set(false)">✕</button>
+    </div>
+    <div class="modal-body" *ngIf="selected()">
+      <div class="pay-worker-info mb-3">
+        <div class="worker-avatar-sm">{{ selected()!.nameAr.charAt(0) }}</div>
+        <div>
+          <div class="fw-bold">{{ selected()!.nameAr }}</div>
+          <div class="text-muted text-sm">{{ selected()!.role }}</div>
+        </div>
+      </div>
+      <form [formGroup]="payForm" class="modal-form">
+        <div class="form-group">
+          <label>الراتب الأساسي (ريال)</label>
+          <input type="number" class="form-control" formControlName="baseSalarySar" min="0">
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>مكافأة (ريال)</label>
+            <input type="number" class="form-control" formControlName="bonusSar" min="0">
+          </div>
+          <div class="form-group">
+            <label>خصومات (ريال)</label>
+            <input type="number" class="form-control" formControlName="deductionSar" min="0">
+          </div>
+        </div>
+        <div class="net-salary">
+          <span>صافي الراتب:</span>
+          <span class="fw-800 text-gold">{{ fmt(netSalary()) }} ﷼</span>
+        </div>
+        <div class="form-group">
+          <label>ملاحظات</label>
+          <input type="text" class="form-control" formControlName="notes">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="showPayModal.set(false)">إلغاء</button>
+      <button class="btn btn-secondary" (click)="paySalary()" [disabled]="saving()">
+        <span class="spinner-sm" *ngIf="saving()"></span>
+        {{ saving() ? 'جاري الصرف...' : '💵 صرف الراتب' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Payroll sheet modal -->
+<div class="modal-overlay" *ngIf="showPayrollModal()" (click)="showPayrollModal.set(false)">
+  <div class="modal lg" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>📋 كشف الرواتب الشهري</h3>
+      <button class="close-btn" (click)="showPayrollModal.set(false)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="payroll-filter mb-3">
+        <div class="form-group">
+          <label>السنة</label>
+          <select class="form-control" [(ngModel)]="selectedYear" style="display:inline-block;width:auto">
+            <option *ngFor="let y of years" [value]="y">{{ y }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>الشهر</label>
+          <select class="form-control" [(ngModel)]="selectedMonth" style="display:inline-block;width:auto">
+            <option *ngFor="let m of months; let i=index" [value]="i+1">{{ m }}</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="loadPayroll()">🔍 عرض</button>
+      </div>
+
+      <div class="loading-wrap" *ngIf="payrollLoading()">
+        <div class="spinner-sm"></div><p>جاري التحميل...</p>
+      </div>
+      <div class="table-wrap" *ngIf="!payrollLoading()">
+        <table class="tbl">
+          <thead>
+            <tr><th>العامل</th><th>الدور</th><th>الراتب الأساسي</th><th>مكافأة</th><th>خصم</th><th>الصافي</th><th>الحالة</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of payroll()">
+              <td class="fw-bold">{{ s.workerNameAr }}</td>
+              <td class="text-sm text-muted">{{ s.workerRole }}</td>
+              <td>{{ fmt(s.baseSalarySar) }} ﷼</td>
+              <td class="text-success">{{ s.bonusSar ? fmt(s.bonusSar)+' ﷼' : '—' }}</td>
+              <td class="text-danger">{{ s.deductionSar ? fmt(s.deductionSar)+' ﷼' : '—' }}</td>
+              <td class="fw-800 text-gold">{{ fmt(s.netSalarySar) }} ﷼</td>
+              <td><span class="badge" [class.badge-success]="s.isPaid" [class.badge-warning]="!s.isPaid">{{ s.isPaid ? '✓ مصروف' : '○ معلق' }}</span></td>
+            </tr>
+            <tr *ngIf="!payroll().length">
+              <td colspan="7" class="text-center text-muted" style="padding:2rem">لا توجد سجلات لهذا الشهر</td>
+            </tr>
+          </tbody>
+          <tfoot *ngIf="payroll().length">
+            <tr>
+              <td colspan="5" class="fw-bold text-gold">الإجمالي</td>
+              <td class="fw-800 text-gold">{{ fmt(totalPayroll()) }} ﷼</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="showPayrollModal.set(false)">إغلاق</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,1 @@
+import"./chunk-4CLCTAJ7.js";var o=[{path:"login",loadComponent:()=>import("./chunk-HSQUBRAO.js").then(t=>t.LoginComponent),title:"\u062A\u0633\u062C\u064A\u0644 \u0627\u0644\u062F\u062E\u0648\u0644"},{path:"",redirectTo:"login",pathMatch:"full"}];export{o as AUTH_ROUTES};

@@ -1,0 +1,95 @@
+<div class="app-shell" [class.sidebar-open]="sidebarOpen()" [class.mobile-open]="mobileOpen()">
+
+  <!-- Mobile overlay -->
+  <div class="mobile-overlay" *ngIf="mobileOpen()" (click)="closeMobile()"></div>
+
+  <!-- ── Sidebar ────────────────────────────────── -->
+  <aside class="sidebar" [class.open]="sidebarOpen() || mobileOpen()">
+
+    <div class="sidebar-logo">
+      <div class="logo-wrap">
+        <span class="logo-icon">🌾</span>
+        <div class="logo-text" *ngIf="sidebarOpen() || mobileOpen()">
+          <h2>مزرعة تنيدة</h2>
+          <p>نظام الإدارة الزراعية</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a *ngFor="let item of navItems"
+         [routerLink]="item.path"
+         routerLinkActive="active"
+         class="nav-item"
+         (click)="closeMobile()">
+        <span class="nav-icon">{{ item.icon }}</span>
+        <span class="nav-label" *ngIf="sidebarOpen() || mobileOpen()">{{ item.label }}</span>
+        <div class="nav-tooltip">{{ item.label }}</div>
+      </a>
+    </nav>
+
+    <div class="sidebar-balance" *ngIf="sidebarOpen() || mobileOpen()">
+      <div class="sb-label">رصيد الخزينة</div>
+      <div class="sb-value">{{ formatBalance(liveBalance()) }} ﷼</div>
+    </div>
+
+    <div class="sidebar-user" *ngIf="sidebarOpen() || mobileOpen()">
+      <div class="user-avatar">{{ (auth.userName() || 'م').charAt(0) }}</div>
+      <div class="user-info">
+        <p class="user-name">{{ auth.userName() || 'المستخدم' }}</p>
+        <p class="user-role">{{ auth.userRole() }}</p>
+      </div>
+      <button class="btn btn-icon" title="تسجيل الخروج" (click)="logout()" style="margin-right:auto">🚪</button>
+    </div>
+
+    <button class="sidebar-toggle" (click)="toggleSidebar()" [title]="sidebarOpen() ? 'طي القائمة' : 'توسيع القائمة'">
+      {{ sidebarOpen() ? '◀' : '▶' }}
+    </button>
+  </aside>
+
+  <!-- ── Main area ──────────────────────────────── -->
+  <div class="main-area">
+
+    <header class="app-header">
+      <button class="btn btn-icon menu-btn" (click)="toggleMobile()">☰</button>
+
+      <div class="header-brand">
+        <span class="brand-icon">🌾</span>
+        <div class="header-title">
+          <h1>نظام إدارة مزرعة تنيدة</h1>
+          <p class="hide-mob">Tenida Farm Management System</p>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="header-balance hide-mob">
+          <div class="hb-label">الرصيد الحالي</div>
+          <div class="hb-value" [class.text-success]="(liveBalance() || 0) > 0" [class.text-danger]="(liveBalance() || 0) < 0">
+            {{ formatBalance(liveBalance()) }} ﷼
+          </div>
+        </div>
+
+        <div class="h-sep hide-mob"></div>
+
+        <div class="header-user hide-mob">
+          <div class="hu-avatar">{{ (auth.userName() || 'م').charAt(0) }}</div>
+          <div class="hu-info">
+            <div class="hu-name">{{ auth.userName() || 'مستخدم' }}</div>
+            <div class="hu-role">{{ auth.userRole() }}</div>
+          </div>
+        </div>
+
+        <button class="btn btn-ghost btn-sm hide-mob" (click)="logout()">🚪 خروج</button>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <router-outlet />
+    </main>
+
+    <footer class="app-footer">
+      <span>نظام إدارة مزرعة تنيدة © 2025</span>
+      <span class="text-muted">v1.0.0 | ASP.NET Core 8 + Angular 18</span>
+    </footer>
+  </div>
+</div>

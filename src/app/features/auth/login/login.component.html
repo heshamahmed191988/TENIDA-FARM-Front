@@ -1,0 +1,64 @@
+<div class="login-page">
+  <!-- Animated background particles -->
+  <div class="particles">
+    <div class="particle" *ngFor="let p of [1,2,3,4,5,6,7,8,9,10,11,12]"
+         [style.left.%]="p*8" [style.animationDelay]="(p*0.4)+'s'"
+         [style.animationDuration]="(3+p*0.5)+'s'">🌿</div>
+  </div>
+
+  <div class="login-card animate-fade">
+    <!-- Logo -->
+    <div class="login-logo">
+      <div class="logo-icon animate-float">🌾</div>
+      <h1>مزرعة تنيدة</h1>
+      <p>نظام الإدارة الزراعية المتكامل</p>
+    </div>
+
+    <!-- Form -->
+    <form [formGroup]="form" (ngSubmit)="submit()" class="login-form">
+      <div class="form-group">
+        <label>اسم المستخدم</label>
+        <div class="input-wrap">
+          <span class="input-icon">👤</span>
+          <input class="form-control" formControlName="username"
+                 placeholder="أدخل اسم المستخدم" autocomplete="username">
+        </div>
+        <div class="field-error" *ngIf="form.get('username')?.invalid && form.get('username')?.touched">
+          اسم المستخدم مطلوب
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>كلمة المرور</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input class="form-control" formControlName="password"
+                 [type]="showPass() ? 'text' : 'password'"
+                 placeholder="أدخل كلمة المرور" autocomplete="current-password">
+          <button type="button" class="toggle-pass" (click)="showPass.set(!showPass())">
+            {{ showPass() ? '🙈' : '👁️' }}
+          </button>
+        </div>
+        <div class="field-error" *ngIf="form.get('password')?.invalid && form.get('password')?.touched">
+          كلمة المرور مطلوبة (6 أحرف على الأقل)
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 btn-lg" [disabled]="loading()">
+        <span *ngIf="loading()" class="spinner-sm"></span>
+        <span>{{ loading() ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول 🚀' }}</span>
+      </button>
+    </form>
+
+    <!-- Hints -->
+    <div class="login-hints">
+      <p class="text-muted text-sm">بيانات تجريبية: admin / Admin&#64;2024!</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="login-footer">
+      <span>نظام إدارة مزرعة تنيدة</span>
+      <span class="text-muted">v1.0 © 2025</span>
+    </div>
+  </div>
+</div>
