@@ -4,11 +4,15 @@
 #  pull request    → build only
 #  manual run      → Actions tab → "Deploy Web" → Run workflow
 #
+# The app calls the API at the relative path /api. Netlify proxies /api/* to the backend
+# (server-to-server), so the browser stays on HTTPS even though the free API host is HTTP-only,
+# and no CORS is needed.
+#
 # Required repository secrets (Settings → Secrets and variables → Actions → Secrets):
 #   NETLIFY_AUTH_TOKEN   Netlify → User settings → Applications → Personal access tokens
 #   NETLIFY_SITE_ID      Netlify → Site configuration → Site details → Site ID
 # Repository variable (… → Variables):
-#   API_URL              the deployed API base URL, e.g. https://tenida-api.runasp.net/api
+#   API_ORIGIN           backend origin without /api, e.g. http://tendafarm.runasp.net
 
 name: Deploy Web
 
@@ -28,9 +32,9 @@ jobs:
   build-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: npm
@@ -38,14 +42,22 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Point the production build at the API
-        if: vars.API_URL != ''
-        run: |
-          sed -i "s#apiUrl: '/api'#apiUrl: '${{ vars.API_URL }}'#" src/environments/environment.prod.ts
-          grep apiUrl src/environments/environment.prod.ts
-
       - name: Build (production)
         run: npx ng build --configuration production
+
+      - name: Add API proxy rule
+        env:
+          API_ORIGIN: ${{ vars.API_ORIGIN }}
+        run: |
+          OUT=dist/tenida-farm/browser/_redirects
+          if [ -n "$API_ORIGIN" ]; then
+            ORIGIN="${API_ORIGIN%/}"
+            # Proxy rule must come before the SPA fallback (first match wins).
+            { echo "/api/*  ${ORIGIN}/api/:splat  200"; cat "$OUT"; } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
+          else
+            echo "::warning::API_ORIGIN variable not set — /api will not reach the backend."
+          fi
+          cat "$OUT"
 
       - name: Deploy to Netlify
         if: github.event_name != 'pull_request'
