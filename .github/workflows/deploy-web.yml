@@ -1,18 +1,20 @@
-# CI/CD — Tenida Farm web app (Angular) → Netlify
+# CI/CD — Tenida Farm web app (Angular) → MonsterASP.NET (same site as the API)
 #
-#  push to main    → build (production) → deploy to Netlify
+#  push to main    → build (production) → upload into the site's ClientApp/ folder via Web Deploy
 #  pull request    → build only
 #  manual run      → Actions tab → "Deploy Web" → Run workflow
 #
-# The app calls the API at the relative path /api. Netlify proxies /api/* to the backend
-# (server-to-server), so the browser stays on HTTPS even though the free API host is HTTP-only,
-# and no CORS is needed.
+# The free plan allows one website, so the .NET API serves this Angular build from ClientApp/:
+#   http://tendafarm.runasp.net/        → web app      /api/* → API      /swagger → API docs
+# The app calls the API with the relative path /api (same origin — no CORS, no proxy).
+# The backend pipeline skips ClientApp/, so the two deploys never overwrite each other.
 #
-# Required repository secrets (Settings → Secrets and variables → Actions → Secrets):
-#   NETLIFY_AUTH_TOKEN   Netlify → User settings → Applications → Personal access tokens
-#   NETLIFY_SITE_ID      Netlify → Site configuration → Site details → Site ID
-# Repository variable (… → Variables):
-#   API_ORIGIN           backend origin without /api, e.g. http://tendafarm.runasp.net
+# Required repository secrets (Settings → Secrets and variables → Actions → Secrets) — same values as the backend repo:
+#   MONSTERASP_SITE            e.g. site96455
+#   MONSTERASP_WEBDEPLOY_HOST  e.g. site96455.siteasp.net
+#   MONSTERASP_WEBDEPLOY_PASS  Web Deploy password
+# Repository variable:
+#   SITE_URL                   e.g. http://tendafarm.runasp.net   (smoke test)
 
 name: Deploy Web
 
@@ -26,10 +28,11 @@ on:
 
 concurrency:
   group: deploy-web
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  build-deploy:
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -45,31 +48,85 @@ jobs:
       - name: Build (production)
         run: npx ng build --configuration production
 
-      - name: Add API proxy rule
-        env:
-          API_ORIGIN: ${{ vars.API_ORIGIN }}
-        run: |
-          OUT=dist/tenida-farm/browser/_redirects
-          if [ -n "$API_ORIGIN" ]; then
-            ORIGIN="${API_ORIGIN%/}"
-            # Proxy rule must come before the SPA fallback (first match wins).
-            { echo "/api/*  ${ORIGIN}/api/:splat  200"; cat "$OUT"; } > "$OUT.tmp" && mv "$OUT.tmp" "$OUT"
-          else
-            echo "::warning::API_ORIGIN variable not set — /api will not reach the backend."
-          fi
-          cat "$OUT"
-
-      - name: Deploy to Netlify
+      - name: Upload build
         if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v5
+        with:
+          name: web-dist
+          path: dist/tenida-farm/browser
+          retention-days: 7
+
+  deploy:
+    name: Deploy to MonsterASP
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: windows-latest
+    environment: production
+    steps:
+      - name: Check deploy secrets
+        id: check
+        shell: pwsh
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-          DEPLOY_MSG: ${{ github.sha }} ${{ github.event.head_commit.message }}
+          SITE: ${{ secrets.MONSTERASP_SITE }}
+          HOST: ${{ secrets.MONSTERASP_WEBDEPLOY_HOST }}
+          PASS: ${{ secrets.MONSTERASP_WEBDEPLOY_PASS }}
         run: |
-          if [ -z "$NETLIFY_AUTH_TOKEN" ] || [ -z "$NETLIFY_SITE_ID" ]; then
-            echo "::warning::Deploy skipped — add NETLIFY_AUTH_TOKEN and NETLIFY_SITE_ID secrets (see deploy-web.yml header)."
-            exit 0
-          fi
-          npx --yes netlify-cli@17 deploy --prod --dir dist/tenida-farm/browser \
-            --site "$NETLIFY_SITE_ID" --auth "$NETLIFY_AUTH_TOKEN" \
-            --message "$DEPLOY_MSG"
+          $missing = @('SITE','HOST','PASS') | Where-Object { -not [Environment]::GetEnvironmentVariable($_) }
+          if ($missing) {
+            Write-Host "::warning::Deploy skipped — missing secrets: $($missing -join ', '). See the header of deploy-web.yml."
+            "ready=false" >> $env:GITHUB_OUTPUT
+          } else { "ready=true" >> $env:GITHUB_OUTPUT }
+
+      - uses: actions/download-artifact@v5
+        if: steps.check.outputs.ready == 'true'
+        with:
+          name: web-dist
+          path: web
+
+      - name: Locate / install Web Deploy
+        if: steps.check.outputs.ready == 'true'
+        shell: pwsh
+        run: |
+          $candidates = @('C:\Program Files\IIS\Microsoft Web Deploy V3\msdeploy.exe',
+                          'C:\Program Files (x86)\IIS\Microsoft Web Deploy V3\msdeploy.exe')
+          $exe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $exe) {
+            choco install webdeploy -y --no-progress | Out-Null
+            $exe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          }
+          if (-not $exe) { throw 'msdeploy.exe not found after install' }
+          "MSDEPLOY=$exe" >> $env:GITHUB_ENV
+
+      # Static files are not locked by IIS, so no app_offline is needed. -verb:sync also removes
+      # old hashed bundles from previous builds.
+      - name: Deploy to ClientApp/
+        if: steps.check.outputs.ready == 'true'
+        shell: cmd
+        env:
+          SITE: ${{ secrets.MONSTERASP_SITE }}
+          HOST: ${{ secrets.MONSTERASP_WEBDEPLOY_HOST }}
+          PASS: ${{ secrets.MONSTERASP_WEBDEPLOY_PASS }}
+        run: |
+          "%MSDEPLOY%" -verb:sync ^
+            -source:contentPath="%GITHUB_WORKSPACE%\web" ^
+            -dest:contentPath="%SITE%/ClientApp",computerName="https://%HOST%:8172/msdeploy.axd?site=%SITE%",userName="%SITE%",password="%PASS%",authtype="Basic",includeAcls="False" ^
+            -allowUntrusted ^
+            -disableLink:AppPoolExtension -disableLink:ContentExtension -disableLink:CertificateExtension ^
+            -retryAttempts:5 -retryInterval:3000
+
+      - name: Smoke test
+        if: steps.check.outputs.ready == 'true' && vars.SITE_URL != ''
+        shell: pwsh
+        run: |
+          $base = "${{ vars.SITE_URL }}".TrimEnd('/')
+          foreach ($path in @('/', '/finance/journal')) {
+            $ok = $false
+            for ($i = 1; $i -le 6 -and -not $ok; $i++) {
+              try {
+                $r = Invoke-WebRequest -Uri "$base$path" -TimeoutSec 60 -SkipHttpErrorCheck
+                if ($r.StatusCode -eq 200 -and $r.Content -match '<app-root') { Write-Host "OK $path"; $ok = $true }
+                else { Write-Host "Attempt $i $path -> HTTP $($r.StatusCode)"; Start-Sleep 10 }
+              } catch { Write-Host "Attempt $i $path failed: $($_.Exception.Message)"; Start-Sleep 10 }
+            }
+            if (-not $ok) { throw "Web app not served at $base$path — deploy the backend first (it serves ClientApp/)." }
+          }
