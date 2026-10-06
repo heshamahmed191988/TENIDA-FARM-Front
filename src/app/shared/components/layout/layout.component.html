@@ -17,27 +17,53 @@
     </div>
 
     <nav class="sidebar-nav">
-      <a *ngFor="let item of navItems"
-         [routerLink]="item.path"
-         routerLinkActive="active"
-         class="nav-item"
-         (click)="closeMobile()">
-        <span class="nav-icon">{{ item.icon }}</span>
-        <span class="nav-label" *ngIf="sidebarOpen() || mobileOpen()">{{ item.label }}</span>
-        <div class="nav-tooltip">{{ item.label }}</div>
-      </a>
+      <ng-container *ngFor="let item of navItems()">
+
+        <!-- Simple link -->
+        <a *ngIf="!item.children"
+           [routerLink]="item.path"
+           routerLinkActive="active"
+           class="nav-item"
+           (click)="closeMobile()">
+          <span class="nav-icon">{{ item.icon }}</span>
+          <span class="nav-label" *ngIf="sidebarOpen() || mobileOpen()">{{ item.label }}</span>
+          <div class="nav-tooltip">{{ item.label }}</div>
+        </a>
+
+        <!-- Group (Finance) -->
+        <ng-container *ngIf="item.children">
+          <button type="button" class="nav-item nav-group" [class.active]="inFinance()" (click)="onGroupClick(item)">
+            <span class="nav-icon">{{ item.icon }}</span>
+            <span class="nav-label" *ngIf="sidebarOpen() || mobileOpen()">{{ item.label }}</span>
+            <span class="nav-caret" *ngIf="sidebarOpen() || mobileOpen()" [class.open]="financeExpanded()">‹</span>
+            <div class="nav-tooltip">{{ item.label }}</div>
+          </button>
+          <div class="nav-children" *ngIf="financeExpanded() && (sidebarOpen() || mobileOpen())">
+            <a *ngFor="let c of item.children"
+               [routerLink]="c.path"
+               routerLinkActive="active"
+               class="nav-child"
+               (click)="closeMobile()">
+              <span class="nav-icon sm">{{ c.icon }}</span>
+              <span>{{ c.label }}</span>
+            </a>
+          </div>
+        </ng-container>
+      </ng-container>
     </nav>
 
     <div class="sidebar-balance" *ngIf="sidebarOpen() || mobileOpen()">
       <div class="sb-label">رصيد الخزينة</div>
-      <div class="sb-value">{{ formatBalance(liveBalance()) }} ﷼</div>
+      <div class="sb-value" [class.neg]="(state.balance() ?? 0) < 0">
+        {{ state.balance() === null ? '...' : (state.balance() | egp) }}
+      </div>
     </div>
 
     <div class="sidebar-user" *ngIf="sidebarOpen() || mobileOpen()">
       <div class="user-avatar">{{ (auth.userName() || 'م').charAt(0) }}</div>
       <div class="user-info">
         <p class="user-name">{{ auth.userName() || 'المستخدم' }}</p>
-        <p class="user-role">{{ auth.userRole() }}</p>
+        <p class="user-role">{{ auth.userRoleLabel() }}</p>
       </div>
       <button class="btn btn-icon" title="تسجيل الخروج" (click)="logout()" style="margin-right:auto">🚪</button>
     </div>
@@ -62,12 +88,12 @@
       </div>
 
       <div class="header-right">
-        <div class="header-balance hide-mob">
+        <a routerLink="/finance/overview" class="header-balance hide-mob" title="عرض ملخص الخزينة">
           <div class="hb-label">الرصيد الحالي</div>
-          <div class="hb-value" [class.text-success]="(liveBalance() || 0) > 0" [class.text-danger]="(liveBalance() || 0) < 0">
-            {{ formatBalance(liveBalance()) }} ﷼
+          <div class="hb-value" [class.text-success]="(state.balance() || 0) > 0" [class.text-danger]="(state.balance() || 0) < 0">
+            {{ state.balance() === null ? '...' : (state.balance() | egp) }}
           </div>
-        </div>
+        </a>
 
         <div class="h-sep hide-mob"></div>
 
@@ -75,7 +101,7 @@
           <div class="hu-avatar">{{ (auth.userName() || 'م').charAt(0) }}</div>
           <div class="hu-info">
             <div class="hu-name">{{ auth.userName() || 'مستخدم' }}</div>
-            <div class="hu-role">{{ auth.userRole() }}</div>
+            <div class="hu-role">{{ auth.userRoleLabel() }}</div>
           </div>
         </div>
 
@@ -88,8 +114,8 @@
     </main>
 
     <footer class="app-footer">
-      <span>نظام إدارة مزرعة تنيدة © 2025</span>
-      <span class="text-muted">v1.0.0 | ASP.NET Core 8 + Angular 18</span>
+      <span>نظام إدارة مزرعة تنيدة © {{ 2026 }}</span>
+      <span class="text-muted">العملة: الجنيه المصري (ج.م)</span>
     </footer>
   </div>
 </div>

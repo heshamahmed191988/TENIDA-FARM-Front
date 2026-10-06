@@ -1,0 +1,241 @@
+<div class="loading-wrap" *ngIf="loading() && !data()"><div class="spinner"></div><p>جاري تحميل الأصول...</p></div>
+
+<ng-container *ngIf="data() as d">
+
+  <div class="section-hdr">
+    <div>
+      <h2>🏗️ الأصول والبنية التحتية</h2>
+      <p>تكلفة كل أصل = مجموع حركات المنصرف على البند المرتبط به في دفتر اليومية • الإهلاك بطريقة القسط الثابت</p>
+    </div>
+    <div class="d-flex gap-1">
+      <button class="btn btn-ghost btn-sm" (click)="load()">🔄 تحديث</button>
+      <button class="btn btn-secondary" (click)="openAsset(null)" *ngIf="auth.isAdminUser()">➕ أصل جديد</button>
+    </div>
+  </div>
+
+  <div class="kpi-grid mb-3">
+    <div class="kpi gold"><div class="kpi-icon">🏗️</div><div>
+      <div class="kpi-label">إجمالي تكلفة الأصول والتأسيس</div>
+      <div class="kpi-value">{{ d.totalCost | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+      <div class="kpi-sub">{{ d.shareOfExpense | pct }} من إجمالي المنصرف</div>
+    </div></div>
+    <div class="kpi red"><div class="kpi-icon">📉</div><div>
+      <div class="kpi-label">مجمع الإهلاك حتى اليوم</div>
+      <div class="kpi-value amount-neg">{{ d.totalAccumulatedDepreciation | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+    </div></div>
+    <div class="kpi green"><div class="kpi-icon">📘</div><div>
+      <div class="kpi-label">صافي القيمة الدفترية</div>
+      <div class="kpi-value amount-pos">{{ d.totalNetBookValue | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+    </div></div>
+    <div class="kpi purple"><div class="kpi-icon">🔧</div><div>
+      <div class="kpi-label">طلبات صيانة مفتوحة</div>
+      <div class="kpi-value">{{ d.openMaintenance.length | egp:'plain' }}</div>
+    </div></div>
+  </div>
+
+  <div class="asset-grid mb-3">
+    <div class="asset" *ngFor="let a of d.items" [style.opacity]="a.totalCost ? 1 : .7">
+      <div class="asset-head">
+        <div class="asset-icon">{{ icon[a.category] }}</div>
+        <div class="flex-1">
+          <h3>{{ a.nameAr }}</h3>
+          <div class="cell-sub">بند: {{ a.expenseItemName }} • {{ a.movementsCount | egp:'plain' }} حركة</div>
+        </div>
+        <span class="badge" [class.badge-success]="a.isOperational" [class.badge-danger]="!a.isOperational">{{ a.isOperational ? 'يعمل' : 'متوقف' }}</span>
+      </div>
+      <div class="asset-body">
+        <div class="d-flex justify-between align-center">
+          <span class="text-muted text-sm">التكلفة الإجمالية</span>
+          <span class="asset-cost">{{ a.totalCost | egp }}</span>
+        </div>
+        <div class="yr-chips">
+          <span class="chip" *ngFor="let y of a.costByYear" [style.opacity]="y.amount ? 1 : .45">{{ yearLabel(y.year) }}: {{ y.amount | egp:'compact' }}</span>
+        </div>
+        <div *ngIf="a.usefulLifeYears">
+          <div class="d-flex justify-between text-sm mb-1">
+            <span class="text-muted">صافي القيمة الدفترية</span>
+            <span class="fw-bold">{{ a.netBookValue | egp:'compact' }}</span>
+          </div>
+          <div class="progress"><div class="progress-bar" [style.width.%]="nbvPct(a)"></div></div>
+          <div class="cell-sub mt-1">عمر إنتاجي {{ a.usefulLifeYears | egp:'plain' }} سنة • إهلاك سنوي {{ a.annualDepreciation | egp:'compact' }}</div>
+        </div>
+        <div class="cell-sub" *ngIf="!a.usefulLifeYears">لا يُحتسب له إهلاك</div>
+        <span class="badge badge-warning" *ngIf="a.openMaintenanceCount" style="align-self:flex-start">🔧 {{ a.openMaintenanceCount }} طلب صيانة مفتوح</span>
+      </div>
+      <div class="asset-foot">
+        <button class="btn btn-ghost btn-sm" (click)="openDetail(a)">📋 التفاصيل</button>
+        <button class="btn btn-ghost btn-sm" (click)="openMaint(a)" *ngIf="auth.hasRole('Admin','Accountant','FieldSupervisor')">🔧 طلب صيانة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Open maintenance -->
+  <div class="card">
+    <div class="card-header"><h3>🔧 طلبات الصيانة المفتوحة</h3></div>
+    <div class="table-wrap">
+      <table class="tbl compact">
+        <thead><tr><th>الأصل</th><th>الطلب</th><th>الأولوية</th><th>الحالة</th><th class="num">التكلفة التقديرية</th><th>التاريخ</th><th>المسؤول</th><th></th></tr></thead>
+        <tbody>
+          <tr *ngFor="let m of d.openMaintenance">
+            <td class="fw-bold">{{ m.itemName }}</td>
+            <td>{{ m.title }}<div class="cell-sub" *ngIf="m.description">{{ m.description }}</div></td>
+            <td><span class="badge" [class]="prBadge[m.priority]">{{ prLabel[m.priority] }}</span></td>
+            <td><span class="chip">{{ stLabel[m.status] }}</span></td>
+            <td class="num">{{ m.estimatedCost ? (m.estimatedCost | egp:'plain') : '—' }}</td>
+            <td class="text-sm">{{ m.requestDate | arDate }}</td>
+            <td class="text-sm">{{ m.assignedTo || '—' }}</td>
+            <td><button class="btn btn-ghost btn-sm" (click)="openMaintUpdate(m)" *ngIf="auth.hasRole('Admin','Accountant','FieldSupervisor')">تحديث</button></td>
+          </tr>
+          <tr *ngIf="!d.openMaintenance.length"><td colspan="8"><div class="empty-msg">لا توجد طلبات صيانة مفتوحة ✅</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</ng-container>
+
+<!-- ── Asset detail ──────────────────────────────────────────── -->
+<div class="modal-overlay" *ngIf="detail() as det" (click)="detail.set(null)">
+  <div class="modal xl" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ icon[det.asset.category] }} {{ det.asset.nameAr }}</h3>
+      <button class="close-btn" (click)="detail.set(null)">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="kpi-grid mb-2">
+        <div class="kpi gold"><div><div class="kpi-label">التكلفة</div><div class="kpi-value">{{ det.asset.totalCost | egp }}</div></div></div>
+        <div class="kpi red"><div><div class="kpi-label">مجمع الإهلاك</div><div class="kpi-value amount-neg">{{ det.asset.accumulatedDepreciation | egp }}</div></div></div>
+        <div class="kpi green"><div><div class="kpi-label">صافي القيمة</div><div class="kpi-value amount-pos">{{ det.asset.netBookValue | egp }}</div></div></div>
+        <div class="kpi blue"><div><div class="kpi-label">أول / آخر صرف</div><div class="kpi-value" style="font-size:.95rem">{{ det.asset.firstExpenseDate | arDate }} — {{ det.asset.lastExpenseDate | arDate }}</div></div></div>
+      </div>
+
+      <div class="d-flex justify-between align-center mb-1">
+        <div class="section-title" style="margin:0">📒 حركات المنصرف على بند «{{ det.asset.expenseItemName }}»</div>
+        <div class="actions-row">
+          <a class="btn btn-ghost btn-sm" routerLink="../journal" [queryParams]="{ itemId: det.asset.expenseItemId }" (click)="detail.set(null)">فتح في الدفتر ←</a>
+          <button class="btn btn-ghost btn-sm" (click)="openAsset(det.asset)" *ngIf="auth.isAdminUser()">✏️ تعديل الأصل</button>
+        </div>
+      </div>
+      <div class="table-wrap tall mb-2" style="max-height:340px">
+        <table class="tbl compact">
+          <thead><tr><th>التاريخ</th><th>البيان</th><th>النشاط</th><th class="num">المبلغ</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let t of det.movements">
+              <td class="text-sm">{{ t.transactionDate | arDate:'short' }}</td>
+              <td>{{ t.description }}</td>
+              <td><span class="chip">{{ t.activityName }}</span></td>
+              <td class="num amount-neg">{{ t.amount | egp:'plain' }}</td>
+            </tr>
+            <tr *ngIf="!det.movements.length"><td colspan="4"><div class="empty-msg">لا توجد حركات على هذا البند بعد</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section-title">🔧 سجل الصيانة</div>
+      <div class="table-wrap">
+        <table class="tbl compact">
+          <thead><tr><th>الطلب</th><th>الأولوية</th><th>الحالة</th><th class="num">تقديري</th><th class="num">فعلي</th><th>تاريخ الطلب</th><th>الإنجاز</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let m of det.maintenance">
+              <td>{{ m.title }}<div class="cell-sub" *ngIf="m.notes">{{ m.notes }}</div></td>
+              <td><span class="badge" [class]="prBadge[m.priority]">{{ prLabel[m.priority] }}</span></td>
+              <td><span class="chip">{{ stLabel[m.status] }}</span></td>
+              <td class="num">{{ m.estimatedCost ? (m.estimatedCost | egp:'plain') : '—' }}</td>
+              <td class="num">{{ m.actualCost ? (m.actualCost | egp:'plain') : '—' }}</td>
+              <td class="text-sm">{{ m.requestDate | arDate }}</td>
+              <td class="text-sm">{{ m.completionDate | arDate }}</td>
+              <td><button class="btn btn-ghost btn-sm" (click)="openMaintUpdate(m)" *ngIf="auth.hasRole('Admin','Accountant','FieldSupervisor')">تحديث</button></td>
+            </tr>
+            <tr *ngIf="!det.maintenance.length"><td colspan="8"><div class="empty-msg">لا يوجد سجل صيانة</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="info-banner mt-2">ℹ️ تكلفة الصيانة الفعلية للمتابعة فقط — لاحتسابها في الخزينة سجّلها كحركة منصرف في دفتر اليومية.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── New maintenance ───────────────────────────────────────── -->
+<div class="modal-overlay" *ngIf="maintFor() as a" (click)="maintFor.set(null)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header"><h3>🔧 طلب صيانة — {{ a.nameAr }}</h3><button class="close-btn" (click)="maintFor.set(null)">✕</button></div>
+    <div class="modal-body">
+      <form [formGroup]="maintForm" class="modal-form">
+        <div class="form-group"><label>عنوان الطلب <span class="req">*</span></label><input class="form-control" formControlName="title" placeholder="مثال: تغيير طلمبة"></div>
+        <div class="form-group"><label>الوصف</label><textarea class="form-control" rows="2" formControlName="description"></textarea></div>
+        <div class="grid-3">
+          <div class="form-group"><label>الأولوية</label>
+            <select class="form-control" formControlName="priority"><option *ngFor="let p of priorities" [value]="p">{{ prLabel[p] }}</option></select>
+          </div>
+          <div class="form-group"><label>التكلفة التقديرية (ج.م)</label><input type="number" class="form-control" formControlName="estimatedCost" min="0"></div>
+          <div class="form-group"><label>المسؤول</label><input class="form-control" formControlName="assignedTo"></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="maintFor.set(null)">إلغاء</button>
+      <button class="btn btn-primary" (click)="saveMaint()" [disabled]="saving()">تسجيل الطلب</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Update maintenance ────────────────────────────────────── -->
+<div class="modal-overlay" *ngIf="updateMaint() as m" (click)="updateMaint.set(null)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header"><h3>تحديث طلب الصيانة — {{ m.title }}</h3><button class="close-btn" (click)="updateMaint.set(null)">✕</button></div>
+    <div class="modal-body">
+      <form [formGroup]="maintUpdateForm" class="modal-form">
+        <div class="grid-3">
+          <div class="form-group"><label>الحالة</label>
+            <select class="form-control" formControlName="status"><option *ngFor="let s of statuses" [value]="s">{{ stLabel[s] }}</option></select>
+          </div>
+          <div class="form-group"><label>التكلفة الفعلية (ج.م)</label><input type="number" class="form-control" formControlName="actualCost" min="0"></div>
+          <div class="form-group"><label>تاريخ الإنجاز</label><input type="date" class="form-control" formControlName="completionDate"></div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group"><label>المسؤول</label><input class="form-control" formControlName="assignedTo"></div>
+          <div class="form-group"><label>ملاحظات</label><input class="form-control" formControlName="notes"></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="updateMaint.set(null)">إلغاء</button>
+      <button class="btn btn-primary" (click)="saveMaintUpdate()" [disabled]="saving()">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Asset add/edit ────────────────────────────────────────── -->
+<div class="modal-overlay" *ngIf="assetModal() as ctx" (click)="assetModal.set(null)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header"><h3>{{ ctx.asset ? '✏️ تعديل أصل' : '➕ أصل جديد' }}</h3><button class="close-btn" (click)="assetModal.set(null)">✕</button></div>
+    <div class="modal-body">
+      <form [formGroup]="assetForm" class="modal-form">
+        <div class="grid-2">
+          <div class="form-group"><label>الاسم <span class="req">*</span></label><input class="form-control" formControlName="nameAr"></div>
+          <div class="form-group"><label>التصنيف</label>
+            <select class="form-control" formControlName="category"><option *ngFor="let c of categories" [value]="c">{{ icon[c] }} {{ catLabel[c] }}</option></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>بند المنصرف المرتبط <span class="req">*</span></label>
+          <select class="form-control" formControlName="expenseItemId">
+            <option value="">— اختر —</option>
+            <option *ngFor="let i of state.lookups()?.expenseItems" [value]="i.id">{{ i.nameAr }}</option>
+          </select>
+          <span class="field-hint">التكلفة تُحسب تلقائياً من كل حركات المنصرف على هذا البند</span>
+        </div>
+        <div class="grid-3">
+          <div class="form-group"><label>العمر الإنتاجي (سنة)</label><input type="number" class="form-control" formControlName="usefulLifeYears" min="0" placeholder="بدون إهلاك"></div>
+          <div class="form-group"><label>الموقع</label><input class="form-control" formControlName="location"></div>
+          <div class="form-group"><label>الاسم بالإنجليزية</label><input class="form-control" formControlName="nameEn" dir="ltr"></div>
+        </div>
+        <div class="form-group"><label>الوصف</label><input class="form-control" formControlName="description"></div>
+        <label class="d-flex align-center gap-1 text-sm cursor-pointer"><input type="checkbox" formControlName="isOperational"> الأصل يعمل</label>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="assetModal.set(null)">إلغاء</button>
+      <button class="btn btn-primary" (click)="saveAsset()" [disabled]="saving()">حفظ</button>
+    </div>
+  </div>
+</div>

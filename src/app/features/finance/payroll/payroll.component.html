@@ -1,0 +1,223 @@
+<div class="loading-wrap" *ngIf="loading() && !report()"><div class="spinner"></div><p>جاري تحميل كشف الرواتب...</p></div>
+
+<ng-container *ngIf="report() as r">
+
+  <div class="section-hdr">
+    <div>
+      <h2>👷 الرواتب والعمالة</h2>
+      <p>كل صرف راتب يُسجَّل في دفتر اليومية على بند «رواتب» مع اسم الموظف / العامل</p>
+    </div>
+    <div class="d-flex gap-1">
+      <button class="btn btn-ghost btn-sm" (click)="load()">🔄 تحديث</button>
+      <button class="btn btn-secondary" (click)="openWorker(null)" *ngIf="auth.canWriteFinance()">➕ موظف / عامل جديد</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid mb-3">
+    <div class="kpi gold"><div class="kpi-icon">💵</div><div>
+      <div class="kpi-label">إجمالي الرواتب المصروفة</div>
+      <div class="kpi-value">{{ r.total | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+      <div class="kpi-sub">{{ r.shareOfExpense | pct }} من إجمالي المنصرف</div>
+    </div></div>
+    <div class="kpi green"><div class="kpi-icon">👷</div><div>
+      <div class="kpi-label">العاملون النشطون</div>
+      <div class="kpi-value">{{ activeCount() | egp:'plain' }} <span class="kpi-unit">من {{ workers().length | egp:'plain' }}</span></div>
+      <div class="kpi-sub">التزام شهري معتاد {{ monthlyCommitment() | egp }}</div>
+    </div></div>
+    <div class="kpi blue"><div class="kpi-icon">📊</div><div>
+      <div class="kpi-label">متوسط الرواتب الشهري</div>
+      <div class="kpi-value">{{ r.averageMonthly | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+      <div class="kpi-sub">{{ r.paymentsCount | egp:'plain' }} دفعة لعدد {{ r.employeesPaid | egp:'plain' }} موظف</div>
+    </div></div>
+    <div class="kpi purple"><div class="kpi-icon">🗓️</div><div>
+      <div class="kpi-label">آخر صرف</div>
+      <div class="kpi-value" style="font-size:1.05rem">{{ r.lastPaymentDate | arDate }}</div>
+      <div class="kpi-sub text-warning" *ngIf="r.paymentsWithoutWorker">⚠ {{ r.paymentsWithoutWorker }} دفعة بدون اسم موظف</div>
+    </div></div>
+  </div>
+
+  <!-- Workers -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3>🧑‍🌾 الموظفون والعمال</h3>
+      <label class="d-flex align-center gap-1 text-sm cursor-pointer">
+        <input type="checkbox" [checked]="showInactive()" (change)="showInactive.set(!showInactive())"> إظهار غير النشطين
+      </label>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl compact">
+        <thead>
+          <tr>
+            <th>الاسم</th><th>الوظيفة</th><th>الحالة</th><th class="num">الراتب المعتاد</th>
+            <th class="num">إجمالي المصروف له</th><th>آخر صرف</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let w of visibleWorkers()" [class.muted]="!w.isActive">
+            <td>
+              <div class="fw-bold">{{ w.nameAr }}</div>
+              <div class="cell-sub" *ngIf="w.phone">📞 {{ w.phone }}</div>
+            </td>
+            <td class="text-sm">{{ w.role }}</td>
+            <td><span class="badge" [class.badge-success]="w.isActive" [class.badge-muted]="!w.isActive">{{ w.isActive ? 'نشط' : 'متوقف' }}</span></td>
+            <td class="num">{{ w.monthlySalary ? (w.monthlySalary | egp:'plain') : '—' }}</td>
+            <td class="num fw-bold">{{ w.totalPaid | egp:'plain' }} <span class="cell-sub">({{ w.paymentsCount | egp:'plain' }})</span></td>
+            <td class="text-sm">{{ w.lastPaymentDate | arDate }}<div class="cell-sub" *ngIf="w.lastPaymentAmount">{{ w.lastPaymentAmount | egp }}</div></td>
+            <td>
+              <div class="d-flex gap-1" *ngIf="auth.canWriteFinance()">
+                <button class="btn btn-primary btn-sm" (click)="openPay(w)" *ngIf="w.isActive">💵 صرف راتب</button>
+                <button class="btn btn-icon btn-sm" title="تعديل" (click)="openWorker(w)">✏️</button>
+                <button class="btn btn-icon btn-sm" [title]="w.isActive ? 'إيقاف' : 'تفعيل'" (click)="toggleActive(w)">{{ w.isActive ? '⏸' : '▶' }}</button>
+                <a class="btn btn-icon btn-sm" title="الحركات" routerLink="../journal" [queryParams]="{ workerId: w.id }">📒</a>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid-2 mb-3">
+    <!-- By employee × year -->
+    <div class="card">
+      <div class="card-header"><h3>📋 الرواتب حسب الموظف والسنة</h3></div>
+      <div class="table-wrap">
+        <table class="tbl compact">
+          <thead>
+            <tr><th>الموظف / العامل</th><th class="num" *ngFor="let y of r.years">{{ yearLabel(y) }}</th><th class="num">الإجمالي</th><th class="num">النسبة</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let e of employeeRows()">
+              <td class="fw-bold">{{ e.workerName }}<div class="cell-sub">{{ e.payments | egp:'plain' }} دفعة</div></td>
+              <td class="num" *ngFor="let y of r.years" [class.text-muted]="!yearAmount(e, y)">{{ yearAmount(e, y) | egp:'plain' }}</td>
+              <td class="num fw-800">{{ e.total | egp:'plain' }}</td>
+              <td class="num">{{ e.percentage | pct }}</td>
+            </tr>
+            <tr class="total-row">
+              <td>الإجمالي</td>
+              <td class="num" *ngFor="let y of r.years">{{ yearTotal(y) | egp:'plain' }}</td>
+              <td class="num">{{ r.total | egp:'plain' }}</td>
+              <td class="num">١٠٠٪</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Monthly chart -->
+    <div class="card">
+      <div class="card-header">
+        <h3>📅 الرواتب حسب الشهر</h3>
+        <div class="seg">
+          <button [class.active]="chartYear()==='all'" (click)="selectChartYear('all')">الكل</button>
+          <button *ngFor="let y of r.years" [class.active]="chartYear()===y" (click)="selectChartYear(y)">{{ yearLabel(y) }}</button>
+        </div>
+      </div>
+      <div class="card-body"><div class="chart-box"><canvas #monthCanvas></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- Payments list -->
+  <div class="card">
+    <div class="card-header">
+      <h3>🧾 كشف دفعات الرواتب</h3>
+      <div class="hdr-actions">
+        <select class="form-control sm" style="width:auto" [ngModel]="paymentsWorker()" (ngModelChange)="paymentsWorker.set($event)">
+          <option value="">كل الموظفين</option>
+          <option *ngFor="let w of workers()" [value]="w.id">{{ w.nameAr }}</option>
+        </select>
+        <div class="seg">
+          <button [class.active]="paymentsYear()==='all'" (click)="paymentsYear.set('all')">الكل</button>
+          <button *ngFor="let y of r.years" [class.active]="paymentsYear()===y" (click)="paymentsYear.set(y)">{{ yearLabel(y) }}</button>
+        </div>
+      </div>
+    </div>
+    <div class="totals-strip">
+      <span>عدد الدفعات: <b>{{ payments().length | egp:'plain' }}</b></span>
+      <span>الإجمالي: <b class="text-gold">{{ paymentsTotal() | egp }}</b></span>
+    </div>
+    <div class="table-wrap tall">
+      <table class="tbl compact">
+        <thead><tr><th>التاريخ</th><th>الموظف / العامل</th><th>البيان</th><th class="num">المبلغ</th><th>ملاحظات</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let p of payments()">
+            <td class="text-sm">{{ p.date | arDate:'short' }}</td>
+            <td class="fw-bold">{{ p.workerName || '—' }}</td>
+            <td class="text-sm">{{ p.description }}</td>
+            <td class="num amount-neg">{{ p.amount | egp:'plain' }}</td>
+            <td class="cell-sub">{{ p.notes }}</td>
+          </tr>
+          <tr *ngIf="!payments().length"><td colspan="5"><div class="empty-msg">لا توجد دفعات</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</ng-container>
+
+<!-- ── Pay salary ────────────────────────────────────────────── -->
+<div class="modal-overlay" *ngIf="payFor() as w" (click)="payFor.set(null)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header"><h3>💵 صرف راتب — {{ w.nameAr }}</h3><button class="close-btn" (click)="payFor.set(null)">✕</button></div>
+    <div class="modal-body">
+      <div class="info-banner gold mb-2">تُسجَّل كحركة «منصرف» على بند «رواتب» (نشاط: رواتب) في دفتر اليومية.</div>
+      <form [formGroup]="payForm" class="modal-form">
+        <div class="grid-2">
+          <div class="form-group"><label>تاريخ الصرف <span class="req">*</span></label><input type="date" class="form-control" formControlName="date" [max]="today"></div>
+          <div class="form-group">
+            <label>المبلغ (ج.م) <span class="req">*</span></label>
+            <input type="number" class="form-control" formControlName="amount" min="1">
+            <span class="field-hint" *ngIf="w.lastPaymentAmount">آخر صرف: {{ w.lastPaymentAmount | egp }} في {{ w.lastPaymentDate | arDate }}</span>
+          </div>
+        </div>
+        <div class="form-group"><label>البيان</label><input class="form-control" formControlName="description"></div>
+        <div class="grid-2">
+          <div class="form-group"><label>طريقة الدفع</label>
+            <select class="form-control" formControlName="paymentMethodId">
+              <option value="">— غير محدد —</option>
+              <option *ngFor="let p of state.lookups()?.paymentMethods" [value]="p.id">{{ p.nameAr }}</option>
+            </select>
+          </div>
+          <div class="form-group"><label>رقم المستند</label><input class="form-control" formControlName="documentNumber"></div>
+        </div>
+        <div class="form-group"><label>ملاحظات</label><input class="form-control" formControlName="notes" placeholder="مثال: راتب شهر سبتمبر / مكافأة"></div>
+        <app-attachment-uploader [required]="state.requireAttachments()" [showError]="submitted()"
+          (idsChange)="attachmentIds = $event" (busyChange)="uploading.set($event)"></app-attachment-uploader>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="payFor.set(null)">إلغاء</button>
+      <button class="btn btn-primary" (click)="savePay()" [disabled]="saving() || uploading()">{{ saving() ? 'جاري الحفظ...' : 'تأكيد الصرف' }}</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Worker add / edit ─────────────────────────────────────── -->
+<div class="modal-overlay" *ngIf="workerModal() as ctx" (click)="workerModal.set(null)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header"><h3>{{ ctx.worker ? '✏️ تعديل بيانات' : '➕ موظف / عامل جديد' }}</h3><button class="close-btn" (click)="workerModal.set(null)">✕</button></div>
+    <div class="modal-body">
+      <form [formGroup]="workerForm" class="modal-form">
+        <div class="grid-2">
+          <div class="form-group"><label>الاسم <span class="req">*</span></label><input class="form-control" formControlName="nameAr"></div>
+          <div class="form-group"><label>الوظيفة <span class="req">*</span></label><input class="form-control" formControlName="role" placeholder="عامل / مدير المزرعة / سائق..."></div>
+        </div>
+        <div class="grid-3">
+          <div class="form-group"><label>الراتب الشهري المعتاد (ج.م)</label><input type="number" class="form-control" formControlName="monthlySalary" min="0"></div>
+          <div class="form-group"><label>تاريخ التعيين</label><input type="date" class="form-control" formControlName="hireDate"></div>
+          <div class="form-group"><label>الهاتف</label><input class="form-control" formControlName="phone" dir="ltr"></div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group"><label>الرقم القومي</label><input class="form-control" formControlName="nationalId" dir="ltr"></div>
+          <div class="form-group"><label>الاسم بالإنجليزية</label><input class="form-control" formControlName="nameEn" dir="ltr"></div>
+        </div>
+        <div class="form-group"><label>ملاحظات</label><input class="form-control" formControlName="notes"></div>
+        <label class="d-flex align-center gap-1 text-sm cursor-pointer"><input type="checkbox" formControlName="isActive"> نشط (يظهر في قوائم الصرف)</label>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="workerModal.set(null)">إلغاء</button>
+      <button class="btn btn-primary" (click)="saveWorker()" [disabled]="saving()">حفظ</button>
+    </div>
+  </div>
+</div>

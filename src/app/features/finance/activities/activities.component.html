@@ -1,0 +1,136 @@
+<div class="section-hdr">
+  <div>
+    <h2>🌾 تقارير الأنشطة والمحاصيل</h2>
+    <p>الإيرادات والمصروفات وصافي الربح لكل نشاط حسب عمود «النشاط / المحصول» في دفتر اليومية</p>
+  </div>
+</div>
+
+<div class="loading-wrap" *ngIf="loading()"><div class="spinner"></div><p>جاري التحميل...</p></div>
+
+<div class="act-layout" *ngIf="!loading()">
+
+  <!-- Activities list -->
+  <div class="card act-list">
+    <div class="card-header"><h3>الأنشطة</h3></div>
+    <div class="card-body" style="padding:.75rem">
+      <div class="list-select">
+        <button *ngFor="let a of activities()" [class.active]="a.activityId === selectedId()" (click)="select(a.activityId)">
+          <span>
+            <span class="fw-bold">{{ a.activityName }}</span>
+            <span class="cell-sub" style="display:block">{{ a.count | egp:'plain' }} حركة</span>
+          </span>
+          <span class="text-sm fw-bold" [class.text-success]="a.net > 0" [class.text-danger]="a.net < 0">{{ a.net | egp:'compact' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report -->
+  <div [style.opacity]="loadingReport() ? .5 : 1">
+    <ng-container *ngIf="report() as r">
+      <div class="d-flex justify-between align-center mb-2" style="flex-wrap:wrap;gap:.5rem">
+        <h3 class="text-gold" style="font-size:1.2rem">تقرير نشاط: {{ r.activityName }}</h3>
+        <div class="actions-row">
+          <a class="btn btn-ghost btn-sm" routerLink="../journal" [queryParams]="{ activityId: r.activityId }">📒 كل الحركات</a>
+          <button class="btn btn-secondary btn-sm" (click)="addMovement()" *ngIf="auth.canWriteFinance()">➕ حركة لهذا النشاط</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid mb-3">
+        <div class="kpi green"><div><div class="kpi-label">إجمالي الإيرادات</div><div class="kpi-value amount-pos">{{ r.income | egp:'plain' }}<span class="kpi-unit">ج.م</span></div></div></div>
+        <div class="kpi red"><div><div class="kpi-label">إجمالي المصروفات</div><div class="kpi-value amount-neg">{{ r.expense | egp:'plain' }}<span class="kpi-unit">ج.م</span></div></div></div>
+        <div class="kpi gold"><div><div class="kpi-label">صافي الربح / (الخسارة)</div>
+          <div class="kpi-value" [class.amount-pos]="r.net >= 0" [class.amount-neg]="r.net < 0">{{ r.net | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+          <div class="kpi-sub">هامش الربح {{ r.margin | pct }}</div></div></div>
+        <div class="kpi blue"><div><div class="kpi-label">عدد الحركات</div><div class="kpi-value">{{ r.count | egp:'plain' }}</div>
+          <div class="kpi-sub">آخر حركة {{ r.lastDate | arDate }}</div></div></div>
+      </div>
+
+      <div class="grid-2 mb-3">
+        <div class="card">
+          <div class="card-header"><h3>📆 النتائج حسب السنة</h3></div>
+          <div class="card-body"><div class="chart-box sm"><canvas #yearCanvas></canvas></div></div>
+          <div class="table-wrap">
+            <table class="tbl compact">
+              <thead><tr><th>السنة</th><th class="num">الإيرادات</th><th class="num">المصروفات</th><th class="num">الصافي</th><th class="num">الهامش</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let y of r.byYear" [class.muted]="!y.income && !y.expense">
+                  <td class="fw-bold">{{ yearLabel(y.year) }}</td>
+                  <td class="num amount-pos">{{ y.income | egp:'plain' }}</td>
+                  <td class="num amount-neg">{{ y.expense | egp:'plain' }}</td>
+                  <td class="num fw-800" [class.text-success]="y.net > 0" [class.text-danger]="y.net < 0">{{ y.net | egp:'plain' }}</td>
+                  <td class="num">{{ y.margin | pct }}</td>
+                </tr>
+                <tr class="total-row">
+                  <td>الإجمالي</td>
+                  <td class="num">{{ r.income | egp:'plain' }}</td><td class="num">{{ r.expense | egp:'plain' }}</td>
+                  <td class="num">{{ r.net | egp:'plain' }}</td><td class="num">{{ r.margin | pct }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h3>📉 المصروفات حسب البند</h3></div>
+          <div class="table-wrap">
+            <table class="tbl compact">
+              <thead><tr><th>البند</th><th class="num">المبلغ</th><th>النسبة من مصروفات النشاط</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let x of r.expenseByItem">
+                  <td class="fw-bold">{{ x.name }}</td>
+                  <td class="num amount-neg">{{ x.amount | egp:'plain' }}</td>
+                  <td><div class="mini-bar"><div class="track"><div class="fill red" [style.width.%]="x.amount / maxExpenseItem() * 100"></div></div><span>{{ x.percentage | pct }}</span></div></td>
+                </tr>
+                <tr *ngIf="!r.expenseByItem.length"><td colspan="3"><div class="empty-msg">لا توجد مصروفات</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <ng-container *ngIf="r.incomeByItem.length">
+            <div class="card-header" style="border-top:1px solid var(--border-light)"><h3>📈 الإيرادات حسب البند</h3></div>
+            <div class="table-wrap">
+              <table class="tbl compact">
+                <tbody>
+                  <tr *ngFor="let x of r.incomeByItem">
+                    <td class="fw-bold">{{ x.name }}</td>
+                    <td class="num amount-pos">{{ x.amount | egp:'plain' }}</td>
+                    <td class="num">{{ x.percentage | pct }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>🧾 كشف حركات النشاط (الأحدث أولاً)</h3>
+          <button class="btn btn-ghost btn-sm" *ngIf="r.movements.length > 25" (click)="showAllMovements.set(!showAllMovements())">
+            {{ showAllMovements() ? 'عرض أقل' : 'عرض الكل (' + r.movements.length + ')' }}
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl compact">
+            <thead><tr><th>التاريخ</th><th>النوع</th><th>البند</th><th>البيان</th><th class="num">وارد</th><th class="num">منصرف</th><th class="num">الصافي التراكمي</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let m of movements()">
+                <td class="text-sm">{{ m.date | arDate:'short' }}</td>
+                <td><span class="badge" [class.badge-in]="m.type==='Income'" [class.badge-out]="m.type==='Expense'">{{ m.type==='Income' ? 'وارد' : 'منصرف' }}</span></td>
+                <td class="text-sm">{{ m.itemName }}</td>
+                <td>{{ m.description }}</td>
+                <td class="num amount-pos">{{ m.income ? (m.income | egp:'plain') : '' }}</td>
+                <td class="num amount-neg">{{ m.expense ? (m.expense | egp:'plain') : '' }}</td>
+                <td class="num fw-bold" [class.text-success]="m.cumulativeNet >= 0" [class.text-danger]="m.cumulativeNet < 0">{{ m.cumulativeNet | egp:'plain' }}</td>
+              </tr>
+              <tr *ngIf="!r.movements.length"><td colspan="7"><div class="empty-msg">لا توجد حركات لهذا النشاط</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>
+
+<app-entry-form *ngIf="newEntryPreset() as p" [preset]="p" (saved)="onSaved()" (closed)="newEntryPreset.set(null)"></app-entry-form>
+

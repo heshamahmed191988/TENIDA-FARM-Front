@@ -1,0 +1,198 @@
+<div class="loading-wrap" *ngIf="loading() && !data()"><div class="spinner"></div><p>جاري تحميل ملخص الخزينة...</p></div>
+
+<ng-container *ngIf="data() as d">
+
+  <!-- KPIs -->
+  <div class="kpi-grid mb-3">
+    <div class="kpi green animate-slide">
+      <div class="kpi-icon">📈</div>
+      <div>
+        <div class="kpi-label">إجمالي الوارد</div>
+        <div class="kpi-value amount-pos">{{ d.kpis.totalIncome | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+        <div class="kpi-sub" *ngIf="d.kpis.openingBalance">+ رصيد افتتاحي {{ d.kpis.openingBalance | egp }}</div>
+        <div class="kpi-sub" *ngIf="!d.kpis.openingBalance">منذ بداية الدفتر</div>
+      </div>
+    </div>
+    <div class="kpi red animate-slide" style="animation-delay:.05s">
+      <div class="kpi-icon">📉</div>
+      <div>
+        <div class="kpi-label">إجمالي المنصرف</div>
+        <div class="kpi-value amount-neg">{{ d.kpis.totalExpense | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+        <div class="kpi-sub">جميع البنود</div>
+      </div>
+    </div>
+    <div class="kpi gold animate-slide" style="animation-delay:.1s">
+      <div class="kpi-icon">💰</div>
+      <div>
+        <div class="kpi-label">الرصيد الحالي</div>
+        <div class="kpi-value" [class.amount-pos]="d.kpis.currentBalance >= 0" [class.amount-neg]="d.kpis.currentBalance < 0">
+          {{ d.kpis.currentBalance | egp:'plain' }}<span class="kpi-unit">ج.م</span>
+        </div>
+        <div class="kpi-sub">رصيد الخزينة</div>
+      </div>
+    </div>
+    <div class="kpi purple animate-slide" style="animation-delay:.15s">
+      <div class="kpi-icon">👥</div>
+      <div>
+        <div class="kpi-label">مساهمات الشركاء</div>
+        <div class="kpi-value">{{ d.kpis.partnerContributions | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+        <div class="kpi-sub">{{ (d.kpis.partnerContributions / (d.kpis.totalIncome || 1) * 100) | pct }} من الوارد</div>
+      </div>
+    </div>
+    <div class="kpi teal animate-slide" style="animation-delay:.2s">
+      <div class="kpi-icon">🌾</div>
+      <div>
+        <div class="kpi-label">إيرادات النشاط</div>
+        <div class="kpi-value">{{ d.kpis.activityRevenue | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+        <div class="kpi-sub">مبيعات المحاصيل وغيرها</div>
+      </div>
+    </div>
+    <div class="kpi blue animate-slide" style="animation-delay:.25s">
+      <div class="kpi-icon">🧾</div>
+      <div>
+        <div class="kpi-label">عدد الحركات</div>
+        <div class="kpi-value">{{ d.kpis.movementCount | egp:'plain' }}</div>
+        <div class="kpi-sub">آخر حركة: {{ d.kpis.lastMovementDate | arDate }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly chart -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3>📅 الحركة الشهرية ورصيد آخر الشهر</h3>
+      <div class="hdr-actions">
+        <div class="seg">
+          <button [class.active]="chartYear()==='all'" (click)="selectYear('all')">الكل</button>
+          <button *ngFor="let y of d.years" [class.active]="chartYear()===y" (click)="selectYear(y)">{{ yearLabel(y) }}</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" (click)="showMonthlyTable.set(!showMonthlyTable())">
+          {{ showMonthlyTable() ? 'إخفاء الجدول' : '📋 عرض الجدول' }}
+        </button>
+        <button class="btn btn-ghost btn-sm" (click)="load()" title="تحديث">🔄</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="chart-box lg"><canvas #monthlyCanvas></canvas></div>
+    </div>
+    <div class="table-wrap tall" *ngIf="showMonthlyTable()">
+      <table class="tbl compact">
+        <thead><tr><th>الشهر</th><th class="num">الوارد</th><th class="num">المنصرف</th><th class="num">الصافي</th><th class="num">الرصيد آخر الشهر</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let m of monthlyRows()" [class.muted]="!m.income && !m.expense">
+            <td>{{ monthLabel(m.year, m.month) }}</td>
+            <td class="num amount-pos">{{ m.income | egp:'plain' }}</td>
+            <td class="num amount-neg">{{ m.expense | egp:'plain' }}</td>
+            <td class="num" [class.text-success]="m.net > 0" [class.text-danger]="m.net < 0">{{ m.net | egp:'plain' }}</td>
+            <td class="num fw-800" [class.text-danger]="m.closingBalance < 0">{{ m.closingBalance | egp:'plain' }}</td>
+          </tr>
+          <tr class="total-row" *ngIf="monthTotals(monthlyRows()) as t">
+            <td>الإجمالي</td>
+            <td class="num">{{ t.income | egp:'plain' }}</td>
+            <td class="num">{{ t.expense | egp:'plain' }}</td>
+            <td class="num">{{ (t.income - t.expense) | egp:'plain' }}</td>
+            <td class="num"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Expense by item × year -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3>📉 المنصرف حسب البند والسنة</h3>
+      <div class="hdr-actions">
+        <label class="d-flex align-center gap-1 text-sm cursor-pointer">
+          <input type="checkbox" [checked]="hideZeroRows()" (change)="hideZeroRows.set(!hideZeroRows())"> إخفاء البنود الصفرية
+        </label>
+        <a class="btn btn-ghost btn-sm" routerLink="../journal" [queryParams]="{ type: 'Expense' }">عرض الحركات ←</a>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl compact">
+        <thead>
+          <tr>
+            <th>البند</th>
+            <th class="num" *ngFor="let y of d.years">{{ yearLabel(y) }}</th>
+            <th class="num">الإجمالي</th>
+            <th>النسبة من المنصرف</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of expenseRows()" class="clickable" [routerLink]="['../journal']" [queryParams]="{ itemId: r.itemId }" title="عرض حركات البند">
+            <td class="fw-bold">{{ r.itemName }}</td>
+            <td class="num" *ngFor="let y of d.years" [class.text-muted]="!yearAmount(r, y)">{{ yearAmount(r, y) | egp:'plain' }}</td>
+            <td class="num fw-800">{{ r.total | egp:'plain' }}</td>
+            <td>
+              <div class="mini-bar"><div class="track"><div class="fill red" [style.width.%]="r.total / maxExpense() * 100"></div></div><span>{{ r.percentage | pct }}</span></div>
+            </td>
+          </tr>
+          <tr class="total-row">
+            <td>الإجمالي</td>
+            <td class="num" *ngFor="let y of d.years">{{ yearTotal('expenseByYear', y) | egp:'plain' }}</td>
+            <td class="num">{{ d.kpis.totalExpense | egp:'plain' }}</td>
+            <td>١٠٠٪</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid-2 mb-3">
+    <!-- Income by item × year -->
+    <div class="card">
+      <div class="card-header">
+        <h3>📈 الوارد حسب البند والسنة</h3>
+        <a class="btn btn-ghost btn-sm" routerLink="../journal" [queryParams]="{ type: 'Income' }">عرض الحركات ←</a>
+      </div>
+      <div class="table-wrap">
+        <table class="tbl compact">
+          <thead>
+            <tr>
+              <th>البند</th>
+              <th class="num" *ngFor="let y of d.years">{{ yearLabel(y) }}</th>
+              <th class="num">الإجمالي</th>
+              <th class="num">النسبة</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of incomeRows()" class="clickable" [routerLink]="['../journal']" [queryParams]="{ itemId: r.itemId }">
+              <td class="fw-bold">{{ r.itemName }}</td>
+              <td class="num" *ngFor="let y of d.years" [class.text-muted]="!yearAmount(r, y)">{{ yearAmount(r, y) | egp:'plain' }}</td>
+              <td class="num fw-800 text-success">{{ r.total | egp:'plain' }}</td>
+              <td class="num">{{ r.percentage | pct }}</td>
+            </tr>
+            <tr class="total-row">
+              <td>الإجمالي</td>
+              <td class="num" *ngFor="let y of d.years">{{ yearTotal('incomeByYear', y) | egp:'plain' }}</td>
+              <td class="num">{{ d.kpis.totalIncome | egp:'plain' }}</td>
+              <td class="num">١٠٠٪</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Activities -->
+    <div class="card">
+      <div class="card-header">
+        <h3>🌾 نتائج الأنشطة</h3>
+        <a class="btn btn-ghost btn-sm" routerLink="../activities">التقارير التفصيلية ←</a>
+      </div>
+      <div class="table-wrap">
+        <table class="tbl compact">
+          <thead><tr><th>النشاط</th><th class="num">الإيرادات</th><th class="num">المصروفات</th><th class="num">الصافي</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let a of activities()" class="clickable" [routerLink]="['../activities']" [queryParams]="{ id: a.activityId }">
+              <td class="fw-bold">{{ a.activityName }} <span class="cell-sub">({{ a.count | egp:'plain' }} حركة)</span></td>
+              <td class="num amount-pos">{{ a.income | egp:'plain' }}</td>
+              <td class="num amount-neg">{{ a.expense | egp:'plain' }}</td>
+              <td class="num fw-800" [class.text-success]="a.net > 0" [class.text-danger]="a.net < 0">{{ a.net | egp:'plain' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</ng-container>

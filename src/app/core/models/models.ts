@@ -1,376 +1,471 @@
-// ── Auth ──────────────────────────────────────────────────────────
-export interface LoginRequest {
-  username: string;
-  password: string;
-}
+// All money values are in Egyptian pounds (EGP / ج.م).
+// Enums are serialized by the API as strings (JsonStringEnumConverter).
 
-export interface AuthResponse {
-  AccessToken: string;
-  RefreshToken: string;
-  username?: string;
-  fullName?: string;
-  role?: string;
-  shareholderId?: string;
-  Success?: boolean;
-  Message?: string;
-}
+// ── Auth ──────────────────────────────────────────────────────────
+export interface LoginRequest { username: string; password: string; }
+export interface AuthResponse { accessToken: string; refreshToken: string; }
 
 export interface JwtPayload {
-  sub: string;
-  unique_name: string;
-  role: string;
+  /** Role / name / id claims may use short names or full .NET claim URIs — read them via AuthService. */
+  [claim: string]: unknown;
   FullName: string;
   ShareholderId: string;
   exp: number;
 }
 
-// ── API Response wrapper ──────────────────────────────────────────
+// ── API envelope ──────────────────────────────────────────────────
 export interface ApiResponse<T> {
   success: boolean;
-  Data: T;
+  data: T;
   message?: string;
   errors?: Record<string, string[]>;
-  pagination?: Pagination;
-  totalCount?: number;
 }
 
-export interface Pagination {
+// ── Enums ─────────────────────────────────────────────────────────
+export type TransactionType = 'Income' | 'Expense';
+export type LookupKind = 'IncomeItem' | 'ExpenseItem' | 'Activity' | 'PaymentMethod';
+export type InstallmentStatus = 'Upcoming' | 'Paid' | 'Overdue' | 'PartiallyPaid' | 'Waived';
+export type MaintenanceStatus = 'Pending' | 'InProgress' | 'Completed' | 'Cancelled';
+export type MaintenancePriority = 'Low' | 'Normal' | 'High' | 'Critical';
+export type CropType = 'Alfalfa' | 'SeasonalCrop' | 'Lemon' | 'Mango' | 'SaidiDates' | 'Livestock' | 'FishFarm' | 'MedjoolDates';
+export type InfrastructureCategory = 'Well' | 'SolarEnergy' | 'IrrigationNetwork' | 'LandPreparation' | 'Roads'
+  | 'Buildings' | 'Equipment' | 'Windbreaks' | 'WaterPond' | 'Electricity';
+
+/** Stable codes of lookup items with business meaning (names are editable). */
+export const LOOKUP_CODES = {
+  partnerContribution: 'PartnerContribution',
+  salaries: 'Salaries',
+  generalActivity: 'General',
+  payrollActivity: 'Payroll',
+} as const;
+
+// ── Journal ───────────────────────────────────────────────────────
+export interface JournalEntry {
+  id: string;
+  sequenceNo: number;
+  transactionDate: string;
+  type: TransactionType;
+  itemId: string;
+  itemName: string;
+  itemCode?: string | null;
+  activityId: string;
+  activityName: string;
+  description: string;
+  amount: number;
+  income: number;
+  expense: number;
+  runningBalance: number;
+  shareholderId?: string | null;
+  workerId?: string | null;
+  partyName?: string | null;
+  paymentMethodId?: string | null;
+  paymentMethodName?: string | null;
+  documentNumber?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  createdBy?: string | null;
+  updatedAt?: string | null;
+  attachmentCount: number;
+}
+
+/** Proof document (image / PDF) attached to a journal movement. */
+export interface Attachment {
+  id: string;
+  transactionId?: string | null;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  isImage: boolean;
+  createdAt: string;
+  createdBy?: string | null;
+}
+
+export interface JournalEntryInput {
+  transactionDate: string;
+  type: TransactionType;
+  itemId: string;
+  activityId: string;
+  description: string;
+  amount: number;
+  shareholderId?: string | null;
+  workerId?: string | null;
+  paymentMethodId?: string | null;
+  documentNumber?: string | null;
+  notes?: string | null;
+  /** Uploaded proof documents to link — required on create when settings.requireAttachments. */
+  attachmentIds?: string[];
+}
+
+export interface JournalQuery {
+  page?: number;
+  pageSize?: number;
+  from?: string;
+  to?: string;
+  type?: TransactionType | '';
+  itemId?: string;
+  activityId?: string;
+  shareholderId?: string;
+  workerId?: string;
+  paymentMethodId?: string;
+  search?: string;
+  hasAttachments?: boolean;
+  sort?: 'asc' | 'desc';
+}
+
+export interface JournalQueryResult {
+  items: JournalEntry[];
   page: number;
   pageSize: number;
   total: number;
   totalPages: number;
-}
-
-// ── Dashboard ─────────────────────────────────────────────────────
-export interface DashboardStats {
-  summary: FinancialSummary;
-  shareholders: ShareholderKpi[];
-  expenseSummary: { category: string; amount: number }[];
-  incomeSummary: { source: string; amount: number }[];
-  monthlyChart2024: MonthlyChart[];
-  monthlyChart2025: MonthlyChart[];
-}
-
-export interface FinancialSummary {
   totalIncome: number;
   totalExpense: number;
   currentBalance: number;
-  totalOverdueInstallments: number;
-  netProfit: number;
 }
 
-export interface MonthlyChart {
-  month: number;
-  monthNameAr: string;
+// ── Summary (الملخص) ──────────────────────────────────────────────
+export interface YearAmount { year: number; amount: number; }
+
+export interface FinanceKpis {
+  openingBalance: number;
   totalIncome: number;
   totalExpense: number;
-  balance: number;
+  currentBalance: number;
+  partnerContributions: number;
+  activityRevenue: number;
+  movementCount: number;
+  lastMovementDate?: string | null;
 }
 
-export interface ShareholderKpi {
+export interface ItemBreakdownRow {
+  itemId: string;
+  itemName: string;
+  byYear: YearAmount[];
+  total: number;
+  percentage: number;
+}
+
+export interface MonthlyRow {
+  year: number;
+  month: number;
+  income: number;
+  expense: number;
+  net: number;
+  closingBalance: number;
+}
+
+export interface ActivitySummaryRow {
+  activityId: string;
+  activityName: string;
+  income: number;
+  expense: number;
+  net: number;
+  count: number;
+  lastDate?: string | null;
+}
+
+export interface FinanceSummary {
+  kpis: FinanceKpis;
+  years: number[];
+  expenseByItem: ItemBreakdownRow[];
+  incomeByItem: ItemBreakdownRow[];
+  incomeByYear: YearAmount[];
+  expenseByYear: YearAmount[];
+  monthly: MonthlyRow[];
+  activities: ActivitySummaryRow[];
+}
+
+// ── Activity report ───────────────────────────────────────────────
+export interface AmountShareRow { id: string; name: string; amount: number; percentage: number; }
+export interface ActivityYearRow { year: number; income: number; expense: number; net: number; margin: number; }
+export interface ActivityMovementRow {
+  id: string; date: string; type: TransactionType; itemName: string; description: string;
+  income: number; expense: number; cumulativeNet: number;
+}
+export interface ActivityReport {
+  activityId: string;
+  activityName: string;
+  income: number;
+  expense: number;
+  net: number;
+  margin: number;
+  count: number;
+  lastDate?: string | null;
+  byYear: ActivityYearRow[];
+  expenseByItem: AmountShareRow[];
+  incomeByItem: AmountShareRow[];
+  movements: ActivityMovementRow[];
+}
+
+// ── Payroll ───────────────────────────────────────────────────────
+export interface PayrollEmployeeRow {
+  workerId: string; workerName: string; role: string; isActive: boolean;
+  byYear: YearAmount[]; total: number; payments: number; lastPaymentDate?: string | null; percentage: number;
+}
+export interface PayrollMonthRow { year: number; month: number; total: number; payments: number; }
+export interface PayrollPaymentRow {
+  transactionId: string; date: string; workerId?: string | null; workerName?: string | null;
+  description: string; amount: number; notes?: string | null;
+}
+export interface PayrollReport {
+  total: number;
+  employeesPaid: number;
+  paymentsCount: number;
+  averageMonthly: number;
+  lastPaymentDate?: string | null;
+  shareOfExpense: number;
+  paymentsWithoutWorker: number;
+  years: number[];
+  employees: PayrollEmployeeRow[];
+  months: PayrollMonthRow[];
+  payments: PayrollPaymentRow[];
+}
+
+// ── Shareholders ──────────────────────────────────────────────────
+export interface InstallmentPosition {
+  id: string;
+  installmentNumber: number;
+  label: string;
+  dueDate?: string | null;
+  amount: number;
+  allocated: number;
+  remaining: number;
+  status: InstallmentStatus;
+  notes?: string | null;
+}
+
+export interface ShareholderPosition {
   id: string;
   nameAr: string;
+  nameEn: string;
   ownershipPercentage: number;
+  phoneWhatsApp?: string | null;
+  email?: string | null;
+  isActive: boolean;
   totalRequired: number;
   totalPaid: number;
   balance: number;
-  paymentProgressPct: number;
+  progressPct: number;
+  overdueAmount: number;
+  contributionsCount: number;
+  lastContributionDate?: string | null;
+  paidByYear: YearAmount[];
+  installments: InstallmentPosition[];
 }
 
-// ── Transaction ───────────────────────────────────────────────────
-export interface Transaction {
-  id: string;
-  transactionDate: string;
-  receiptNumber?: string;
-  description: string;
-  expenseDescription?: string;
-  type: TransactionType;
-  totalIncome: number;
-  totalExpense: number;
-  previousBalance: number;
-  runningBalance: number;
-  currency: Currency;
-  incomeCategory?: IncomeCategory;
-  expenseCategory?: ExpenseCategory;
-  shareholderId?: string;
-  shareholderName?: string;
-  createdAt?: string;
-  // Income breakdown
-  incomeMahmoudRagab?: number;
-  incomeMahmoudHussein?: number;
-  incomeMohamedNaguib?: number;
-  incomeMohamedAbdelHadi?: number;
-  incomeAlfalfa?: number;
-  incomeSeasonalCrop?: number;
-  incomeLemon?: number;
-  incomeMango?: number;
-  incomeSaidiDates?: number;
-  incomeLivestock?: number;
-  incomeFishFarm?: number;
-  incomeBankOther?: number;
-  // Expense breakdown
-  expMiscellaneous?: number;
-  expLandSearch?: number;
-  expCompanySetup?: number;
-  expWell?: number;
-  expSolarEnergy?: number;
-  expIrrigationNetwork?: number;
-  expLandPreparation?: number;
-  expWindbreaks?: number;
-  expRoads?: number;
-  expWaterPond?: number;
-  expBuildings?: number;
-  expEquipment?: number;
-  expFertilizers?: number;
-  expAlfalfaOps?: number;
-  expSeasonalOps?: number;
-  expLemonOps?: number;
-  expMangoOps?: number;
-  expSaidiDatesOps?: number;
-  expLivestockOps?: number;
-  expFishFarmOps?: number;
-  expLandRent?: number;
-  expSalaries?: number;
-  expBankOther?: number;
+export interface ShareholdersOverview {
+  totalRequired: number;
+  totalPaid: number;
+  totalOverdue: number;
+  totalBalance: number;
+  years: number[];
+  shareholders: ShareholderPosition[];
 }
 
-export interface CreateTransactionRequest {
-  transactionDate: string;
-  description: string;
-  expenseDescription?: string;
-  receiptNumber?: string;
-  type: number;
-  currency: number;
-  totalIncome: number;
-  totalExpense: number;
-  incomeCategory?: number;
-  expenseCategory?: number;
-  shareholderId?: string;
-  incomeMahmoudRagab?: number;
-  incomeMahmoudHussein?: number;
-  incomeMohamedNaguib?: number;
-  incomeMohamedAbdelHadi?: number;
-  incomeAlfalfa?: number;
-  incomeSeasonalCrop?: number;
-  expWell?: number;
-  expSolarEnergy?: number;
-  expIrrigationNetwork?: number;
-  expLandPreparation?: number;
-  expRoads?: number;
-  expBuildings?: number;
-  expEquipment?: number;
-  expFertilizers?: number;
-  expAlfalfaOps?: number;
-  expSeasonalOps?: number;
-  expLandRent?: number;
-  expSalaries?: number;
-  expMiscellaneous?: number;
+export interface ShareholderInput {
+  nameAr: string; nameEn?: string | null; ownershipPercentage: number;
+  phoneWhatsApp?: string | null; email?: string | null;
+}
+export interface InstallmentInput {
+  installmentNumber: number; label: string; dueDate?: string | null; amount: number; notes?: string | null;
+}
+export interface ContributionInput {
+  attachmentIds?: string[];
+  date: string; amount: number; description?: string | null; activityId?: string | null;
+  paymentMethodId?: string | null; documentNumber?: string | null; notes?: string | null;
 }
 
-// ── Shareholder ───────────────────────────────────────────────────
-export interface Shareholder {
-  id: string;
-  nameAr: string;
-  nameEn: string;
-  shareCount: number;
-  ownershipPercentage: number;
-  totalRequiredSar: number;
-  totalPaidSar: number;
-  balanceSar: number;
-  paymentProgressPct: number;
-  overdueCount: number;
-  overdueAmountSar: number;
-  phoneWhatsApp?: string;
-  installments: Installment[];
-}
-
-export interface Installment {
-  id: string;
-  installmentNumber: number;
-  dueDate: string;
-  scheduledAmountSar: number;
-  paidAmountSar: number;
-  status: InstallmentStatus;
-  paidDate?: string;
-  receiptReference?: string;
-  remainingAmountSar: number;
-}
-
-export interface RecordPaymentRequest {
-  amount: number;
-  paymentDate?: string;
-  receiptReference?: string;
-  notes?: string;
-}
-
-// ── Crop ──────────────────────────────────────────────────────────
-export interface Crop {
-  id: string;
-  nameAr: string;
-  nameEn: string;
-  cropType: string;
-  isActive: boolean;
-  description?: string;
-  totalRevenueSar: number;
-  totalCostSar: number;
-  netProfitSar: number;
-  totalCycles: number;
-  cycles?: CropCycle[];
-}
-
-export interface CropCycle {
-  id: string;
-  cropId: string;
-  cycleName: string;
-  plantingDate: string;
-  expectedHarvestDate?: string;
-  actualHarvestDate?: string;
-  areaFeddan: number;
-  quantityPlantedKg?: number;
-  seedCostSar?: number;
-  totalCostSar: number;
-  totalRevenueSar: number;
-  isCompleted: boolean;
-  notes?: string;
-  harvests?: Harvest[];
-}
-
-export interface Harvest {
-  id: string;
-  cropCycleId: string;
-  harvestDate: string;
-  quantityKg: number;
-  pricePerKgSar: number;
-  totalRevenueSar: number;
-  buyerName?: string;
-  notes?: string;
-}
-
-// ── Infrastructure ────────────────────────────────────────────────
-export interface InfrastructureItem {
-  id: string;
-  nameAr: string;
-  nameEn: string;
-  category: string;
-  description?: string;
-  totalCostSar: number;
-  annualDepreciationSar?: number;
-  usefulLifeYears?: number;
-  isOperational: boolean;
-  acquisitionDate: string;
-  location?: string;
-  netBookValueSar: number;
-  pendingMaintenanceCount?: number;
-  maintenanceRequests?: MaintenanceRequest[];
-}
-
-export interface MaintenanceRequest {
-  id: string;
-  infrastructureItemId: string;
-  title: string;
-  description?: string;
-  priority: string;
-  status: string;
-  estimatedCostSar?: number;
-  actualCostSar?: number;
-  requestDate: string;
-  completionDate?: string;
-  assignedTo?: string;
-}
-
-// ── Worker ────────────────────────────────────────────────────────
+// ── Workers ───────────────────────────────────────────────────────
 export interface Worker {
   id: string;
   nameAr: string;
   nameEn: string;
   role: string;
-  monthlySalarySar: number;
-  hireDate: string;
-  terminationDate?: string;
+  monthlySalary?: number | null;
+  hireDate?: string | null;
+  terminationDate?: string | null;
   isActive: boolean;
-  phone?: string;
-  totalPaidSar?: number;
-  salaryHistory?: SalaryPayment[];
+  phone?: string | null;
+  nationalId?: string | null;
+  notes?: string | null;
+  totalPaid: number;
+  paymentsCount: number;
+  lastPaymentDate?: string | null;
+  lastPaymentAmount?: number | null;
+}
+export interface WorkerInput {
+  nameAr: string; nameEn?: string | null; role: string; monthlySalary?: number | null;
+  hireDate?: string | null; phone?: string | null; nationalId?: string | null; notes?: string | null; isActive: boolean;
+}
+export interface SalaryPaymentInput {
+  attachmentIds?: string[];
+  date: string; amount: number; description?: string | null; activityId?: string | null;
+  paymentMethodId?: string | null; documentNumber?: string | null; notes?: string | null;
 }
 
-export interface SalaryPayment {
+// ── Assets ────────────────────────────────────────────────────────
+export interface Maintenance {
+  id: string; infrastructureItemId: string; itemName: string; title: string; description?: string | null;
+  priority: MaintenancePriority; status: MaintenanceStatus; estimatedCost?: number | null; actualCost?: number | null;
+  requestDate: string; completionDate?: string | null; assignedTo?: string | null; notes?: string | null;
+}
+export interface AssetRow {
   id: string;
-  workerId: string;
-  year: number;
-  month: number;
-  baseSalarySar: number;
-  bonusSar?: number;
-  deductionSar?: number;
-  netSalarySar: number;
-  isPaid: boolean;
-  paymentDate?: string;
-  workerNameAr?: string;
-  workerRole?: string;
+  category: InfrastructureCategory;
+  nameAr: string;
+  nameEn: string;
+  description?: string | null;
+  expenseItemId: string;
+  expenseItemName: string;
+  totalCost: number;
+  costByYear: YearAmount[];
+  movementsCount: number;
+  firstExpenseDate?: string | null;
+  lastExpenseDate?: string | null;
+  usefulLifeYears?: number | null;
+  annualDepreciation: number;
+  accumulatedDepreciation: number;
+  netBookValue: number;
+  isOperational: boolean;
+  location?: string | null;
+  specifications?: string | null;
+  openMaintenanceCount: number;
+}
+export interface AssetsOverview {
+  totalCost: number;
+  totalAccumulatedDepreciation: number;
+  totalNetBookValue: number;
+  shareOfExpense: number;
+  years: number[];
+  items: AssetRow[];
+  openMaintenance: Maintenance[];
+}
+export interface AssetDetail { asset: AssetRow; movements: JournalEntry[]; maintenance: Maintenance[]; }
+export interface AssetInput {
+  category: InfrastructureCategory; nameAr: string; nameEn?: string | null; description?: string | null;
+  expenseItemId: string; usefulLifeYears?: number | null; isOperational: boolean;
+  location?: string | null; specifications?: string | null;
+}
+export interface MaintenanceInput {
+  title: string; description?: string | null; priority: MaintenancePriority;
+  estimatedCost?: number | null; assignedTo?: string | null;
+}
+export interface MaintenanceUpdateInput {
+  status: MaintenanceStatus; actualCost?: number | null; completionDate?: string | null;
+  assignedTo?: string | null; notes?: string | null;
 }
 
-// ── Enums ─────────────────────────────────────────────────────────
-export enum TransactionType { Income = 1, Expense = 2 }
-export enum Currency { SAR = 1, EGP = 2 }
-export enum InstallmentStatus {
-  Upcoming = 'Upcoming',
-  Paid = 'Paid',
-  Overdue = 'Overdue',
-  PartiallyPaid = 'PartiallyPaid'
+// ── Lookups & settings ────────────────────────────────────────────
+export interface LookupItem {
+  id: string; kind: LookupKind; nameAr: string; code?: string | null;
+  sortOrder: number; isActive: boolean; isSystem: boolean; usageCount: number;
+}
+export interface PartyOption { id: string; nameAr: string; isActive: boolean; }
+export interface LookupBundle {
+  incomeItems: LookupItem[];
+  expenseItems: LookupItem[];
+  activities: LookupItem[];
+  paymentMethods: LookupItem[];
+  shareholders: PartyOption[];
+  workers: PartyOption[];
+}
+export interface LookupInput { kind: LookupKind; nameAr: string; sortOrder?: number | null; isActive: boolean; }
+
+export interface FarmSettings {
+  projectName: string;
+  openingBalance: number;
+  ledgerStartDate: string;
+  currencyCode: string;
+  currencyNameAr: string;
+  currencySymbol: string;
+  dataSource?: string | null;
+  requireAttachments: boolean;
+}
+export interface FarmSettingsInput { projectName: string; openingBalance: number; ledgerStartDate: string; requireAttachments: boolean; }
+
+// ── Dashboard ─────────────────────────────────────────────────────
+export interface ShareholderMini {
+  id: string; nameAr: string; totalRequired: number; totalPaid: number; balance: number; progressPct: number;
+}
+export interface DashboardData {
+  kpis: FinanceKpis;
+  selectedYear: number;
+  years: number[];
+  yearIncome: number;
+  yearExpense: number;
+  monthly: MonthlyRow[];
+  topExpenseItems: AmountShareRow[];
+  incomeItems: AmountShareRow[];
+  activities: ActivitySummaryRow[];
+  shareholders: ShareholderMini[];
+  totalOverdueInstallments: number;
+  recentMovements: JournalEntry[];
 }
 
-export enum IncomeCategory {
-  ShareholderContribution = 1,
-  AlfalfaSales = 2,
-  SeasonalCropSales = 3,
-  LemonSales = 4,
-  MangoSales = 5,
-  SaidiDatesSales = 6,
-  LivestockSales = 7,
-  FishFarmSales = 8,
-  BankOrOtherIncome = 9
+// ── Agriculture ───────────────────────────────────────────────────
+export interface CropSummary {
+  id: string; cropType: CropType; nameAr: string; nameEn: string; isActive: boolean; description?: string | null;
+  activityId?: string | null; activityName?: string | null;
+  revenue: number; cost: number; net: number; cyclesCount: number; activeCyclesCount: number;
+}
+export interface Harvest {
+  id: string; cropCycleId: string; harvestDate: string; quantity: number; unit: string;
+  pricePerUnit?: number | null; totalValue?: number | null; buyerName?: string | null; notes?: string | null;
+}
+export interface CropCycle {
+  id: string; cropId: string; cropName: string; cycleName: string; plantingDate: string;
+  expectedHarvestDate?: string | null; actualHarvestDate?: string | null; areaFeddan: number; seedCost?: number | null;
+  isCompleted: boolean; notes?: string | null; harvests: Harvest[];
+}
+export interface CropDetail { crop: CropSummary; cycles: CropCycle[]; byYear: ActivityYearRow[]; }
+export interface CropCycleInput {
+  cycleName: string; plantingDate: string; expectedHarvestDate?: string | null;
+  areaFeddan: number; seedCost?: number | null; notes?: string | null;
+}
+export interface HarvestInput {
+  harvestDate: string; quantity: number; unit: string; pricePerUnit?: number | null;
+  buyerName?: string | null; notes?: string | null;
 }
 
-export enum ExpenseCategory {
-  Miscellaneous = 1,
-  LandSearch = 2,
-  CompanySetup = 3,
-  Well = 4,
-  SolarEnergy = 5,
-  IrrigationNetwork = 6,
-  LandPreparation = 7,
-  Windbreaks = 8,
-  Roads = 9,
-  WaterPond = 10,
-  Buildings = 11,
-  Equipment = 12,
-  Fertilizers = 13,
-  AlfalfaOperations = 14,
-  SeasonalCropOperations = 15,
-  LemonOperations = 16,
-  MangoOperations = 17,
-  SaidiDatesOperations = 18,
-  LivestockOperations = 19,
-  FishFarmOperations = 20,
-  LandRent = 21,
-  Salaries = 22,
-  BankOrOther = 23
-}
+// ── Arabic labels ─────────────────────────────────────────────────
+export const TYPE_LABEL: Record<TransactionType, string> = { Income: 'وارد', Expense: 'منصرف' };
 
-export const EXPENSE_CATEGORY_AR: Record<number, string> = {
-  1: 'نثريات', 2: 'البحث وإيجاد الأرض', 3: 'تأسيس شركة',
-  4: 'البئر', 5: 'الطاقة الشمسية', 6: 'شبكة الري',
-  7: 'تجهيز الأرض', 8: 'مصدات الرياح', 9: 'طرق',
-  10: 'بركة مياه', 11: 'الإنشاءات', 12: 'المعدات',
-  13: 'أسمدة', 14: 'البرسيم الحجازي', 15: 'زراعة موسمية',
-  16: 'ليمون', 17: 'مانجو', 18: 'تمور صعيدي',
-  19: 'إنتاج حيواني', 20: 'مزرعة سمكية', 21: 'إيجار الأرض',
-  22: 'رواتب', 23: 'بنك / مصادر أخرى'
+export const INSTALLMENT_STATUS_LABEL: Record<InstallmentStatus, string> = {
+  Paid: 'مسدد', PartiallyPaid: 'مسدد جزئياً', Overdue: 'متأخر', Upcoming: 'قادم', Waived: 'غير مستحق',
+};
+export const INSTALLMENT_STATUS_BADGE: Record<InstallmentStatus, string> = {
+  Paid: 'badge-success', PartiallyPaid: 'badge-warning', Overdue: 'badge-danger', Upcoming: 'badge-info', Waived: 'badge-gold',
 };
 
-export const INCOME_CATEGORY_AR: Record<number, string> = {
-  1: 'مساهمات المساهمين', 2: 'مبيعات البرسيم الحجازي',
-  3: 'مبيعات زراعة موسمية', 4: 'مبيعات ليمون',
-  5: 'مبيعات مانجو', 6: 'مبيعات تمور صعيدي',
-  7: 'مبيعات إنتاج حيواني', 8: 'مبيعات مزرعة سمكية',
-  9: 'بنك / مصادر أخرى'
+export const MAINTENANCE_STATUS_LABEL: Record<MaintenanceStatus, string> = {
+  Pending: 'قيد الانتظار', InProgress: 'جاري التنفيذ', Completed: 'مكتمل', Cancelled: 'ملغي',
+};
+export const MAINTENANCE_PRIORITY_LABEL: Record<MaintenancePriority, string> = {
+  Low: 'منخفضة', Normal: 'عادية', High: 'عالية', Critical: 'حرجة',
+};
+export const MAINTENANCE_PRIORITY_BADGE: Record<MaintenancePriority, string> = {
+  Low: 'badge-info', Normal: 'badge-success', High: 'badge-warning', Critical: 'badge-danger',
+};
+
+export const ASSET_CATEGORY_LABEL: Record<InfrastructureCategory, string> = {
+  Well: 'البئر', SolarEnergy: 'الطاقة الشمسية', IrrigationNetwork: 'شبكة الري', LandPreparation: 'تجهيز الأرض',
+  Roads: 'الطرق', Buildings: 'الإنشاءات', Equipment: 'المعدات', Windbreaks: 'مصدات الرياح',
+  WaterPond: 'بركة المياه', Electricity: 'الكهرباء',
+};
+export const ASSET_CATEGORY_ICON: Record<InfrastructureCategory, string> = {
+  Well: '💧', SolarEnergy: '☀️', IrrigationNetwork: '🌊', LandPreparation: '🚜', Roads: '🛣️',
+  Buildings: '🏠', Equipment: '⚙️', Windbreaks: '🌬️', WaterPond: '🏞️', Electricity: '⚡',
+};
+
+export const LOOKUP_KIND_LABEL: Record<LookupKind, string> = {
+  IncomeItem: 'بنود الوارد', ExpenseItem: 'بنود المنصرف', Activity: 'الأنشطة / المحاصيل', PaymentMethod: 'طرق الدفع',
+};
+
+export const CROP_ICON: Record<CropType, string> = {
+  Alfalfa: '🌿', SeasonalCrop: '🌾', Lemon: '🍋', Mango: '🥭', SaidiDates: '🌴',
+  Livestock: '🐄', FishFarm: '🐟', MedjoolDates: '🌴',
+};
+export const CROP_COLOR: Record<CropType, string> = {
+  Alfalfa: '#4caf50', SeasonalCrop: '#c8a84b', Lemon: '#ffeb3b', Mango: '#ff9800',
+  SaidiDates: '#8d6e63', Livestock: '#9e9e9e', FishFarm: '#03a9f4', MedjoolDates: '#a1887f',
 };

@@ -1,161 +1,166 @@
 <div class="dashboard animate-fade">
 
-  <div class="loading-wrap" *ngIf="loading()">
+  <div class="loading-wrap" *ngIf="loading() && !data()">
     <div class="spinner"></div><p>جاري تحميل بيانات المزرعة...</p>
   </div>
 
-  <ng-container *ngIf="!loading() && stats()">
+  <ng-container *ngIf="data() as d">
 
     <!-- Header -->
     <div class="section-hdr">
       <div>
         <h2>📊 لوحة التحكم الرئيسية</h2>
-        <p>نظرة شاملة على الوضع المالي والتشغيلي لمزرعة تنيدة • 2024-2025</p>
+        <p>نظرة شاملة على الوضع المالي لمزرعة تنيدة • آخر حركة {{ d.kpis.lastMovementDate | arDate }} • المبالغ بالجنيه المصري</p>
       </div>
       <div class="d-flex gap-1 align-center">
-        <div class="year-tabs">
-          <button class="yt-btn" [class.active]="selectedYear()===2024" (click)="changeYear(2024)">2024</button>
-          <button class="yt-btn" [class.active]="selectedYear()===2025" (click)="changeYear(2025)">2025</button>
-        </div>
-        <button class="btn btn-ghost btn-sm" (click)="loadStats()">🔄</button>
+        <a class="btn btn-secondary btn-sm" routerLink="/finance/journal" *ngIf="auth.canWriteFinance()">➕ تسجيل حركة</a>
+        <button class="btn btn-ghost btn-sm" (click)="load(d.selectedYear)" title="تحديث">🔄</button>
       </div>
     </div>
 
     <!-- KPI Cards -->
     <div class="grid-4 mb-3">
-      <div *ngFor="let kpi of kpis(); let i=index"
-           class="kpi animate-slide" [class]="kpi.cls"
-           [style.animationDelay]="(i*0.08)+'s'">
-        <div class="kpi-icon">{{ kpi.icon }}</div>
+      <a class="kpi gold animate-slide" routerLink="/finance/overview">
+        <div class="kpi-icon">💰</div>
         <div>
-          <div class="kpi-label">{{ kpi.label }}</div>
-          <div class="kpi-value"
-               [class.amount-pos]="kpi.cls==='green' || (kpi.cls==='gold' && kpi.value>0)"
-               [class.amount-neg]="kpi.cls==='red' || (kpi.cls==='gold' && kpi.value<0) || kpi.cls==='purple'">
-            {{ fmt(kpi.value) }}
-          </div>
-          <div class="kpi-sub">{{ kpi.sub }} • ريال سعودي</div>
+          <div class="kpi-label">رصيد الخزينة الحالي</div>
+          <div class="kpi-value" [class.amount-pos]="d.kpis.currentBalance >= 0" [class.amount-neg]="d.kpis.currentBalance < 0">{{ d.kpis.currentBalance | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+          <div class="kpi-sub">{{ d.kpis.movementCount | egp:'plain' }} حركة مسجلة</div>
         </div>
-      </div>
+      </a>
+      <a class="kpi green animate-slide" style="animation-delay:.08s" routerLink="/finance/journal" [queryParams]="{ type: 'Income' }">
+        <div class="kpi-icon">📈</div>
+        <div>
+          <div class="kpi-label">إجمالي الوارد</div>
+          <div class="kpi-value amount-pos">{{ d.kpis.totalIncome | egp:'compact' }}</div>
+          <div class="kpi-sub">منها مساهمات الشركاء {{ d.kpis.partnerContributions | egp:'compact' }}</div>
+        </div>
+      </a>
+      <a class="kpi red animate-slide" style="animation-delay:.16s" routerLink="/finance/journal" [queryParams]="{ type: 'Expense' }">
+        <div class="kpi-icon">📉</div>
+        <div>
+          <div class="kpi-label">إجمالي المنصرف</div>
+          <div class="kpi-value amount-neg">{{ d.kpis.totalExpense | egp:'compact' }}</div>
+          <div class="kpi-sub">جميع البنود منذ بداية الدفتر</div>
+        </div>
+      </a>
+      <a class="kpi purple animate-slide" style="animation-delay:.24s" routerLink="/finance/shareholders">
+        <div class="kpi-icon">⚠️</div>
+        <div>
+          <div class="kpi-label">متأخرات الشركاء</div>
+          <div class="kpi-value" [class.amount-neg]="d.totalOverdueInstallments > 0">{{ d.totalOverdueInstallments | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+          <div class="kpi-sub">{{ d.totalOverdueInstallments > 0 ? 'يحتاج متابعة' : 'لا توجد متأخرات' }}</div>
+        </div>
+      </a>
     </div>
 
     <!-- Charts Row -->
     <div class="grid-2 mb-3">
       <div class="card">
         <div class="card-header">
-          <h3>📅 الإيرادات والمصروفات الشهرية</h3>
+          <h3>📅 الوارد والمنصرف الشهري</h3>
           <div class="year-tabs sm">
-            <button class="yt-btn" [class.active]="selectedYear()===2024" (click)="changeYear(2024)">2024</button>
-            <button class="yt-btn" [class.active]="selectedYear()===2025" (click)="changeYear(2025)">2025</button>
+            <button *ngFor="let y of d.years" class="yt-btn" [class.active]="d.selectedYear === y" (click)="load(y)">{{ yearLabel(y) }}</button>
           </div>
         </div>
-        <div class="card-body" style="height:300px;position:relative">
-          <canvas #monthlyChartRef></canvas>
+        <div class="card-body">
+          <div class="d-flex gap-2 text-sm mb-1">
+            <span>وارد {{ yearLabel(d.selectedYear) }}: <b class="text-success">{{ d.yearIncome | egp }}</b></span>
+            <span>منصرف: <b class="text-danger">{{ d.yearExpense | egp }}</b></span>
+          </div>
+          <div class="chart-box"><canvas #monthlyChartRef></canvas></div>
         </div>
       </div>
 
       <div class="card">
         <div class="card-header">
-          <h3>🥧 توزيع المصروفات حسب البند</h3>
-          <span class="badge badge-gold">أكبر 10 بنود</span>
+          <h3>🥧 أكبر بنود المنصرف</h3>
+          <a routerLink="/finance/overview" class="btn btn-ghost btn-sm">الملخص الكامل ←</a>
         </div>
-        <div class="card-body" style="height:300px;position:relative">
-          <canvas #expenseChartRef></canvas>
+        <div class="card-body">
+          <div class="chart-box"><canvas #expenseChartRef></canvas></div>
         </div>
       </div>
     </div>
 
-    <!-- Shareholders + Expense summary -->
     <div class="grid-2 mb-3">
-
       <!-- Shareholder progress -->
       <div class="card">
         <div class="card-header">
-          <h3>👥 حالة مساهمات الشركاء</h3>
-          <span class="badge badge-danger" *ngIf="stats()!.summary.totalOverdueInstallments > 0">
-            متأخر: {{ fmt(stats()!.summary.totalOverdueInstallments) }} ﷼
-          </span>
+          <h3>👥 مساهمات الشركاء</h3>
+          <a routerLink="/finance/shareholders" class="btn btn-ghost btn-sm">التفاصيل ←</a>
         </div>
         <div class="card-body p-0">
           <div class="sh-progress-list">
-            <div *ngFor="let sh of stats()!.shareholders" class="sh-progress-item">
-              <div class="sh-avatar-sm">{{ sh.nameAr.charAt(2) }}</div>
+            <div *ngFor="let sh of d.shareholders" class="sh-progress-item">
+              <div class="sh-avatar-sm">{{ initial(sh.nameAr) }}</div>
               <div class="sh-progress-info">
                 <div class="d-flex justify-between align-center mb-1">
                   <span class="fw-bold text-sm">{{ sh.nameAr }}</span>
-                  <span class="text-sm"
-                        [class.text-success]="sh.balance >= 0"
-                        [class.text-danger]="sh.balance < 0">
-                    {{ sh.balance >= 0 ? '✓ ملتزم' : '⚠ ' + fmt(Math.abs(sh.balance)) + ' ﷼' }}
+                  <span class="text-sm" [class.text-success]="sh.balance >= 0" [class.text-danger]="sh.balance < 0">
+                    {{ sh.balance >= 0 ? '✓ ملتزم' : '⚠ متبقي ' + (-sh.balance | egp) }}
                   </span>
                 </div>
                 <div class="progress">
-                  <div class="progress-bar"
-                       [style.width.%]="sh.paymentProgressPct"
-                       [style.background]="sh.balance < 0 ? 'linear-gradient(90deg,#c62828,#e53935)' : ''">
-                  </div>
+                  <div class="progress-bar" [style.width.%]="sh.progressPct"
+                       [style.background]="sh.balance < 0 ? 'linear-gradient(90deg,#c62828,#e57373)' : ''"></div>
                 </div>
                 <div class="d-flex justify-between mt-1">
-                  <span class="text-sm text-muted">{{ fmt(sh.totalPaid) }} / {{ fmt(sh.totalRequired) }} ﷼</span>
-                  <span class="text-sm text-gold fw-800">{{ sh.paymentProgressPct.toFixed(1) }}%</span>
+                  <span class="text-sm text-muted">{{ sh.totalPaid | egp:'plain' }} من {{ sh.totalRequired | egp }}</span>
+                  <span class="text-sm text-gold fw-800">{{ sh.progressPct | pct }}</span>
                 </div>
               </div>
             </div>
-          </div>
-          <div class="sh-total-row">
-            <span class="text-muted text-sm">إجمالي المساهمات الأربعة</span>
-            <span class="fw-800 text-gold">{{ fmt(totalShContributions()) }} ﷼</span>
           </div>
         </div>
       </div>
 
-      <!-- Expense summary bars -->
+      <!-- Activities -->
       <div class="card">
         <div class="card-header">
-          <h3>📋 ملخص المصروفات الإجمالية</h3>
-          <a routerLink="/reports" class="btn btn-ghost btn-sm">عرض الكل ←</a>
+          <h3>🌾 نتائج الأنشطة</h3>
+          <a routerLink="/finance/activities" class="btn btn-ghost btn-sm">التقارير ←</a>
         </div>
         <div class="card-body p-0">
           <div class="exp-summary-list">
-            <div *ngFor="let item of stats()!.expenseSummary.slice(0,8)" class="exp-summary-item">
-              <span class="exp-label">{{ item.category }}</span>
-              <div class="exp-track">
-                <div class="exp-fill"
-                     [style.width.%]="(item.amount / stats()!.summary.totalExpense) * 100">
-                </div>
+            <a *ngFor="let a of d.activities" class="act-row" routerLink="/finance/activities" [queryParams]="{ id: a.activityId }">
+              <span class="exp-label">{{ a.activityName }}</span>
+              <div class="act-bars">
+                <div class="exp-track"><div class="exp-fill in" [style.width.%]="a.income / maxActivity() * 100"></div></div>
+                <div class="exp-track"><div class="exp-fill out" [style.width.%]="a.expense / maxActivity() * 100"></div></div>
               </div>
-              <span class="exp-val">{{ fmtCompact(item.amount) }}</span>
-            </div>
+              <span class="exp-val" [class.text-success]="a.net > 0" [class.text-danger]="a.net < 0">{{ a.net | egp:'compact' }}</span>
+            </a>
+          </div>
+          <div class="d-flex gap-2 text-sm" style="padding:.6rem 1.5rem;border-top:1px solid var(--border-light)">
+            <span><span class="legend-dot in"></span> إيرادات</span>
+            <span><span class="legend-dot out"></span> مصروفات</span>
+            <span class="text-muted">• الرقم = الصافي</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Bottom stats strip -->
-    <div class="stats-strip">
-      <div class="stat-item">
-        <span>🌿</span>
-        <div><div class="stat-val text-success">1,196,700 ﷼</div><div class="stat-label">إيرادات البرسيم الحجازي</div></div>
+    <!-- Recent movements -->
+    <div class="card">
+      <div class="card-header">
+        <h3>🧾 آخر الحركات</h3>
+        <a routerLink="/finance/journal" class="btn btn-ghost btn-sm">دفتر اليومية ←</a>
       </div>
-      <div class="stat-item">
-        <span>🌾</span>
-        <div><div class="stat-val text-success">1,122,000 ﷼</div><div class="stat-label">الزراعة الموسمية</div></div>
-      </div>
-      <div class="stat-item">
-        <span>☀️</span>
-        <div><div class="stat-val text-gold">1,844,500 ﷼</div><div class="stat-label">الطاقة الشمسية</div></div>
-      </div>
-      <div class="stat-item">
-        <span>💧</span>
-        <div><div class="stat-val text-gold">1,618,155 ﷼</div><div class="stat-label">شبكة الري</div></div>
-      </div>
-      <div class="stat-item">
-        <span>🚜</span>
-        <div><div class="stat-val text-warning">3,042,200 ﷼</div><div class="stat-label">تجهيز الأرض</div></div>
-      </div>
-      <div class="stat-item">
-        <span>👷</span>
-        <div><div class="stat-val">585,500 ﷼</div><div class="stat-label">رواتب العمال</div></div>
+      <div class="table-wrap">
+        <table class="tbl compact">
+          <thead><tr><th>التاريخ</th><th>البيان</th><th>البند</th><th>النشاط</th><th class="num">المبلغ</th><th class="num">الرصيد</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let t of d.recentMovements">
+              <td class="text-sm">{{ t.transactionDate | arDate:'short' }}</td>
+              <td class="fw-bold text-sm">{{ t.description }}<div class="cell-sub" *ngIf="t.partyName">{{ t.partyName }}</div></td>
+              <td class="text-sm">{{ t.itemName }}</td>
+              <td><span class="chip">{{ t.activityName }}</span></td>
+              <td class="num" [class.amount-pos]="t.type==='Income'" [class.amount-neg]="t.type==='Expense'">{{ t.type==='Income' ? '+' : '−' }}{{ t.amount | egp:'plain' }}</td>
+              <td class="num fw-bold">{{ t.runningBalance | egp:'plain' }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 

@@ -1,31 +1,27 @@
 import { Pipe, PipeTransform } from '@angular/core';
+import { fmtCompact, fmtDate, fmtDateShort, fmtMoney, fmtNum, fmtPct } from '../../../core/utils/format';
 
-@Pipe({ name: 'sar', standalone: true })
-export class SarPipe implements PipeTransform {
-  transform(value: number | null | undefined, compact = false): string {
-    const n = value ?? 0;
-    if (compact) {
-      if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M ﷼';
-      if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'K ﷼';
-    }
-    return n.toLocaleString('ar-SA', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' ﷼';
+/** `{{ amount | egp }}` → "١٢٬٣٤٥ ج.م" · `| egp:'plain'` → number only · `| egp:'compact'` → "١٢٫٣ ألف" */
+@Pipe({ name: 'egp', standalone: true })
+export class EgpPipe implements PipeTransform {
+  transform(value: number | null | undefined, mode: 'full' | 'plain' | 'compact' = 'full'): string {
+    if (mode === 'plain') return fmtNum(value);
+    if (mode === 'compact') return fmtCompact(value);
+    return fmtMoney(value);
   }
 }
 
-@Pipe({ name: 'hijriDate', standalone: true })
-export class HijriDatePipe implements PipeTransform {
-  transform(value: string | null | undefined): string {
-    if (!value) return '—';
-    const d = new Date(value);
-    return d.toLocaleDateString('ar-SA-u-ca-gregory', {
-      year: 'numeric', month: 'long', day: 'numeric'
-    });
+@Pipe({ name: 'pct', standalone: true })
+export class PctPipe implements PipeTransform {
+  transform(value: number | null | undefined): string { return fmtPct(value); }
+}
+
+/** `{{ date | arDate }}` → "٦ سبتمبر ٢٠٢٦" · `| arDate:'short'` → "٢٠٢٦/٠٩/٠٦" */
+@Pipe({ name: 'arDate', standalone: true })
+export class ArDatePipe implements PipeTransform {
+  transform(value: string | null | undefined, mode: 'long' | 'short' = 'long'): string {
+    return mode === 'short' ? fmtDateShort(value) : fmtDate(value);
   }
 }
 
-@Pipe({ name: 'arabicNumber', standalone: true })
-export class ArabicNumberPipe implements PipeTransform {
-  transform(value: number | null | undefined): string {
-    return (value ?? 0).toLocaleString('ar-SA');
-  }
-}
+export const FORMAT_PIPES = [EgpPipe, PctPipe, ArDatePipe] as const;

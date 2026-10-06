@@ -110,3 +110,19 @@
 }
 
 @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
+
+/* ── Nav group (Finance) ────────────────────────────────── */
+button.nav-item { width:calc(100% - .9rem); border:1px solid transparent; background:transparent; font-family:var(--font); cursor:pointer; text-align:right; }
+.nav-group.active { color:var(--secondary-light); background:rgba(26,92,46,.25); }
+.nav-caret { margin-inline-start:auto; font-size:1rem; transition:transform .2s; transform:rotate(0deg); }
+.nav-caret.open { transform:rotate(-90deg); }
+.nav-children { display:flex; flex-direction:column; margin:.15rem 1.35rem .35rem .45rem; padding-inline-start:.4rem; border-inline-start:1px dashed rgba(200,168,75,.25); }
+.nav-child { display:flex; align-items:center; gap:.55rem; padding:.48rem .7rem; border-radius:8px; color:var(--text-secondary); text-decoration:none; font-size:.8rem; font-weight:600; white-space:nowrap; transition:var(--tr);
+  &:hover { background:rgba(26,92,46,.25); color:var(--secondary-light); }
+  &.active { background:rgba(200,168,75,.12); color:var(--secondary-light); font-weight:800; } }
+.nav-icon.sm { font-size:.9rem; width:18px; }
+.sidebar-balance .sb-value.neg { color:#ef9a9a; }
+a.header-balance { text-decoration:none; color:inherit; }
+
+/* Flex/grid children must be allowed to shrink, otherwise wide tables push the page wider than the screen */
+.main-area, .page-content { min-width:0; }

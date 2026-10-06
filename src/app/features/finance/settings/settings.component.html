@@ -1,0 +1,82 @@
+<div class="section-hdr">
+  <div>
+    <h2>⚙️ الإعدادات والقوائم</h2>
+    <p>القوائم المنسدلة المستخدمة في دفتر اليومية — مثل ورقة «اعدادات» في ملف الإكسيل</p>
+  </div>
+</div>
+
+<div class="loading-wrap" *ngIf="loading() && !bundle()"><div class="spinner"></div></div>
+
+<ng-container *ngIf="bundle() as b">
+
+  <!-- General settings -->
+  <div class="card mb-3">
+    <div class="card-header"><h3>🏷️ الإعدادات العامة</h3></div>
+    <div class="card-body">
+      <form [formGroup]="settingsForm" class="filters" (ngSubmit)="saveSettings()">
+        <div class="form-group"><label>اسم المشروع</label><input class="form-control" formControlName="projectName"></div>
+        <div class="form-group"><label>العملة</label><input class="form-control" value="جنيه مصري (ج.م)" disabled></div>
+        <div class="form-group">
+          <label>الرصيد الافتتاحي (ج.م)</label>
+          <input type="number" class="form-control" formControlName="openingBalance">
+        </div>
+        <div class="form-group"><label>تاريخ بداية الدفتر</label><input type="date" class="form-control" formControlName="ledgerStartDate"></div>
+        <div class="form-group"><label>&nbsp;</label><button class="btn btn-primary" type="submit" [disabled]="saving()">حفظ الإعدادات</button></div>
+      </form>
+      <label class="d-flex align-center gap-1 mt-2 cursor-pointer" style="font-size:.88rem">
+        <input type="checkbox" [formControl]="settingsForm.controls.requireAttachments">
+        <span><b>إلزام مستند إثبات</b> (صورة أو PDF) لكل حركة وارد أو منصرف جديدة — يُنصح بإبقائه مفعّلاً</span>
+      </label>
+      <div class="info-banner mt-2">
+        ℹ️ تغيير الرصيد الافتتاحي يعيد احتساب رصيد كل الحركات تلقائياً.
+        <span *ngIf="settings()?.dataSource" class="text-muted" style="margin-inline-start:auto">مصدر البيانات: {{ settings()?.dataSource }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lists -->
+  <div class="lists">
+    <div class="card" *ngFor="let def of lists">
+      <div class="card-header">
+        <h3>{{ def.icon }} {{ kindLabel[def.kind] }}</h3>
+        <span class="badge badge-muted">{{ b[def.key].length }}</span>
+      </div>
+      <div class="card-body" style="padding:.9rem 1.1rem">
+        <p class="field-hint mb-1">{{ def.hint }}</p>
+        <div class="lk-row" *ngFor="let item of b[def.key]; let i = index; let last = last" [class.off]="!item.isActive">
+          <div class="d-flex" style="flex-direction:column">
+            <button class="btn btn-icon btn-sm" style="width:22px;height:16px;font-size:.6rem" [disabled]="i === 0" (click)="move(def, item, -1)" title="لأعلى">▲</button>
+            <button class="btn btn-icon btn-sm" style="width:22px;height:16px;font-size:.6rem" [disabled]="last" (click)="move(def, item, 1)" title="لأسفل">▼</button>
+          </div>
+          <div class="lk-name">
+            <ng-container *ngIf="editingId() !== item.id; else editTpl">
+              <span class="fw-bold">{{ item.nameAr }}</span>
+              <span class="badge badge-gold" *ngIf="item.isSystem" title="عنصر أساسي في النظام — يمكن تعديل اسمه فقط" style="margin-inline-start:.35rem">أساسي</span>
+            </ng-container>
+            <ng-template #editTpl>
+              <input class="form-control sm" [(ngModel)]="editName" (keydown.enter)="saveEdit(item)" (keydown.escape)="editingId.set(null)" autofocus>
+            </ng-template>
+          </div>
+          <span class="chip" title="عدد الحركات">{{ item.usageCount | egp:'plain' }}</span>
+          <ng-container *ngIf="editingId() !== item.id; else saveBtns">
+            <button class="btn btn-icon btn-sm" title="تعديل الاسم" (click)="startEdit(item)">✏️</button>
+            <button class="btn btn-icon btn-sm" [title]="item.isActive ? 'إيقاف' : 'تفعيل'" (click)="toggle(item)" *ngIf="!item.isSystem">{{ item.isActive ? '⏸' : '▶' }}</button>
+            <button class="btn btn-icon btn-sm" title="حذف" (click)="remove(item)" *ngIf="!item.isSystem && !item.usageCount">🗑️</button>
+          </ng-container>
+          <ng-template #saveBtns>
+            <button class="btn btn-icon btn-sm" title="حفظ" (click)="saveEdit(item)">✔</button>
+            <button class="btn btn-icon btn-sm" title="إلغاء" (click)="editingId.set(null)">✕</button>
+          </ng-template>
+        </div>
+        <div class="lk-add">
+          <input class="form-control sm" [(ngModel)]="newNames[def.kind]" [placeholder]="'إضافة إلى ' + kindLabel[def.kind] + '...'" (keydown.enter)="add(def)">
+          <button class="btn btn-primary btn-sm" (click)="add(def)">إضافة</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-banner gold mt-3">
+    👥 المساهمون والموظفون يُدارون من صفحتي «المساهمون» و«الرواتب والعمالة». العناصر المستخدمة في حركات لا يمكن حذفها — يمكن إيقافها فتختفي من قوائم الإدخال وتبقى في التقارير.
+  </div>
+</ng-container>
