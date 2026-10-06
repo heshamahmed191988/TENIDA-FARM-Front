@@ -1,6 +1,6 @@
 # CI/CD — Tenida Farm web app (Angular) → Netlify
 #
-#  push to master  → build (production) → deploy to Netlify
+#  push to main    → build (production) → deploy to Netlify
 #  pull request    → build only
 #  manual run      → Actions tab → "Deploy Web" → Run workflow
 #
@@ -18,10 +18,10 @@ name: Deploy Web
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths-ignore: ['**.md']
   pull_request:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
