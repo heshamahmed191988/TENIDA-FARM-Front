@@ -148,8 +148,8 @@ table.tbl tbody tr:last-child{border-bottom:none}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 @keyframes pulse-glow{0%,100%{box-shadow:0 0 5px rgba(200,168,75,.3)}50%{box-shadow:0 0 20px rgba(200,168,75,.6)}}
 
-.animate-fade{animation:fadeIn .35s ease both}
-.animate-slide{animation:slideIn .4s ease both}
+.animate-fade{animation:fadeIn .35s ease backwards}
+.animate-slide{animation:slideIn .4s ease backwards}
 /* Extra utilities appended */
 .card-footer{padding:1rem 1.5rem;border-top:1px solid var(--border-light);display:flex;gap:.75rem;justify-content:flex-end}
 .section-title{font-size:1.1rem;font-weight:700;color:var(--secondary);display:flex;align-items:center;gap:.5rem;margin-bottom:1rem}

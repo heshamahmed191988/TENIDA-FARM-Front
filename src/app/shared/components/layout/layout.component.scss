@@ -95,7 +95,8 @@
 }
 
 /* ── Page content & footer ──────────────────────────────── */
-.page-content { flex:1; padding:1.5rem; position:relative; z-index:1;
+/* No z-index here: it would create a stacking context and trap modals (z-index 1000) under the sidebar/header */
+.page-content { flex:1; padding:1.5rem; position:relative;
   @media(max-width:768px) { padding:1rem; } }
 .app-footer {
   padding:.75rem 1.5rem; border-top:1px solid var(--border-light);
