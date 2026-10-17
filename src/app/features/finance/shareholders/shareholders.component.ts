@@ -7,14 +7,17 @@ import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { FinanceStateService } from '../../../core/services/finance-state.service';
 import {
-  INSTALLMENT_STATUS_BADGE, INSTALLMENT_STATUS_LABEL, InstallmentPosition, InstallmentStatus,
+  INSTALLMENT_STATUS_BADGE, INSTALLMENT_STATUS_LABEL, InstallmentPosition, InstallmentStatus, JournalEntry,
   ShareholderPosition, ShareholdersOverview
 } from '../../../core/models/models';
 import { apiError, todayIso, yearLabel } from '../../../core/utils/format';
 import { FORMAT_PIPES } from '../../../shared/components/pipes/formatting.pipe';
 import { AttachmentUploaderComponent } from '../../../shared/components/attachments/attachment-uploader.component';
 
-/** «المساهمين» — paid amounts come from journal contributions, allocated to the EGP schedule. */
+/**
+ * «المساهمين» — in Saudi riyals. The SAR amount of each journal contribution is allocated to the SAR
+ * installment schedule; the EGP actually received (journal) is shown alongside with the effective rate.
+ */
 @Component({
   selector: 'app-finance-shareholders',
   standalone: true,
@@ -28,10 +31,16 @@ import { AttachmentUploaderComponent } from '../../../shared/components/attachme
     .sh-top { display:flex; align-items:center; gap:.8rem; }
     .sh-top h3 { font-size:1rem; }
     .sh-figs { display:grid; grid-template-columns:repeat(3,1fr); gap:.5rem; }
-    .sh-figs div { background:rgba(255,255,255,.03); border:1px solid var(--border-light); border-radius:8px; padding:.5rem .6rem; }
+    .sh-figs > div { background:rgba(255,255,255,.03); border:1px solid var(--border-light); border-radius:8px; padding:.5rem .6rem; }
     .sh-figs .l { font-size:.68rem; color:var(--text-muted); }
     .sh-figs .v { font-size:.88rem; font-weight:800; font-variant-numeric:tabular-nums; }
+    .sh-figs .v .u { font-size:.62rem; font-weight:600; color:var(--text-muted); }
     .sch td .st { display:block; margin-top:.2rem; }
+    .sh-egp { display:flex; justify-content:space-between; gap:.5rem; font-size:.75rem; color:var(--text-muted); }
+    .sh-egp b { color:var(--text-secondary); font-variant-numeric:tabular-nums; }
+    .rate-box { display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:.6rem .85rem; border-radius:8px;
+      background:rgba(200,168,75,.08); border:1px solid rgba(200,168,75,.25); font-size:.85rem; }
+    .rate-box b { color:var(--secondary-light); }
   `]
 })
 export class ShareholdersComponent implements OnInit {
@@ -49,6 +58,7 @@ export class ShareholdersComponent implements OnInit {
   submitted = signal(false);
 
   detail = signal<ShareholderPosition | null>(null);
+  detailContributions = signal<JournalEntry[] | null>(null);
   contributeFor = signal<ShareholderPosition | null>(null);
   editProfile = signal<ShareholderPosition | null>(null);
   editInstallment = signal<{ sh: ShareholderPosition; inst: InstallmentPosition | null } | null>(null);
@@ -60,6 +70,7 @@ export class ShareholdersComponent implements OnInit {
 
   contributionForm = this.fb.group({
     date: [todayIso(), Validators.required],
+    amountSar: [null as number | null, [Validators.required, Validators.min(1)]],
     amount: [null as number | null, [Validators.required, Validators.min(1)]],
     description: [''],
     paymentMethodId: [''],
@@ -106,10 +117,31 @@ export class ShareholdersComponent implements OnInit {
       next: d => {
         this.data.set(d);
         this.loading.set(false);
-        if (reopenId) this.detail.set(d.shareholders.find(s => s.id === reopenId) ?? null);
+        if (reopenId) this.openDetail(d.shareholders.find(s => s.id === reopenId) ?? null);
       },
       error: e => { this.loading.set(false); this.toastr.error(apiError(e, 'تعذر تحميل بيانات المساهمين')); }
     });
+  }
+
+  /** Statement: position + the shareholder's contribution movements (SAR and EGP). */
+  openDetail(sh: ShareholderPosition | null) {
+    this.detail.set(sh);
+    this.detailContributions.set(null);
+    if (!sh) return;
+    this.api.queryJournal({ shareholderId: sh.id, pageSize: 200, sort: 'asc' }).subscribe({
+      next: r => { if (this.detail()?.id === sh.id) this.detailContributions.set(r.items); },
+      error: () => this.detailContributions.set([]),
+    });
+  }
+
+  /** EGP per SAR of one movement. */
+  rateOf(e: JournalEntry) { return e.amountSar ? e.amount / e.amountSar : null; }
+
+  /** Live rate in the contribution form. */
+  formRate() {
+    const v = this.contributionForm.getRawValue();
+    const sar = Number(v.amountSar), egp = Number(v.amount);
+    return sar > 0 && egp > 0 ? egp / sar : null;
   }
 
   installmentOf(sh: ShareholderPosition, num: number) {
@@ -120,6 +152,8 @@ export class ShareholdersComponent implements OnInit {
 
   paidIn(sh: ShareholderPosition, year: number) { return sh.paidByYear.find(y => y.year === year)?.amount ?? 0; }
   paidInYear(year: number) { return (this.data()?.shareholders ?? []).reduce((a, s) => a + this.paidIn(s, year), 0); }
+  paidEgpIn(sh: ShareholderPosition, year: number) { return sh.paidEgpByYear.find(y => y.year === year)?.amount ?? 0; }
+  paidEgpInYear(year: number) { return (this.data()?.shareholders ?? []).reduce((a, s) => a + this.paidEgpIn(s, year), 0); }
 
   initial(name: string) {
     const parts = name.replace('م/', '').trim().split(/\s+/);
@@ -132,7 +166,7 @@ export class ShareholdersComponent implements OnInit {
   openContribution(sh: ShareholderPosition) {
     const next = sh.installments.find(i => i.remaining > 0);
     this.contributionForm.reset({
-      date: todayIso(), amount: next?.remaining ?? null, description: '', paymentMethodId: '', documentNumber: '', notes: '',
+      date: todayIso(), amountSar: next?.remaining ?? null, amount: null, description: '', paymentMethodId: '', documentNumber: '', notes: '',
     });
     this.attachmentIds = [];
     this.submitted.set(false);
@@ -148,7 +182,7 @@ export class ShareholdersComponent implements OnInit {
     const v = this.contributionForm.getRawValue();
     this.saving.set(true);
     this.api.addContribution(sh.id, {
-      date: v.date!, amount: Number(v.amount), description: v.description || null,
+      date: v.date!, amountSar: Number(v.amountSar), amount: Number(v.amount), description: v.description || null,
       paymentMethodId: v.paymentMethodId || null, documentNumber: v.documentNumber || null, notes: v.notes || null,
       attachmentIds: this.attachmentIds,
     }).subscribe({

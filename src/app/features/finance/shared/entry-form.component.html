@@ -54,6 +54,18 @@
           <input type="text" class="form-control" formControlName="description" placeholder="وصف الحركة — مثال: جاز للجرار" [class.invalid]="invalid('description')">
         </div>
 
+        <div class="info-banner gold mb-2" *ngIf="partyMode()==='shareholder'">
+          💱 مساهمة الشريك: المبلغ أعلاه بالجنيه يدخل رصيد الخزينة، والمبلغ بالريال يُخصم من أقساط المساهم.
+        </div>
+        <div class="grid-2" *ngIf="partyMode()==='shareholder'">
+          <div class="form-group">
+            <label>المبلغ المدفوع (ر.س) <span class="req">*</span></label>
+            <input type="number" class="form-control" formControlName="amountSar" min="0" step="0.01" placeholder="بالريال السعودي"
+                   [class.invalid]="submitted() && !!sarError()">
+            <span class="field-hint" *ngIf="ratePreview()">سعر التحويل: {{ ratePreview() }}</span>
+          </div>
+        </div>
+
         <div class="grid-2">
           <div class="form-group">
             <label>

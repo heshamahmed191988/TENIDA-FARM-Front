@@ -1,7 +1,10 @@
 // Formatting helpers — Egyptian pound (ج.م), Arabic digits, Gregorian dates.
+// The shareholders section (installments / contributions) is in Saudi riyals (ر.س).
 
 export const CURRENCY_SYMBOL = 'ج.م';
 export const CURRENCY_NAME = 'جنيه مصري';
+export const SAR_SYMBOL = 'ر.س';
+export const SAR_NAME = 'ريال سعودي';
 
 const numberFmt = new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 });
 const intFmt = new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 0 });
@@ -23,6 +26,19 @@ export function fmtInt(n: number | null | undefined): string {
 /** "١٬٢٣٤ ج.م" */
 export function fmtMoney(n: number | null | undefined): string {
   return `${numberFmt.format(n ?? 0)} ${CURRENCY_SYMBOL}`;
+}
+
+/** "١٬٢٣٤ ر.س" */
+export function fmtSar(n: number | null | undefined): string {
+  return `${numberFmt.format(n ?? 0)} ${SAR_SYMBOL}`;
+}
+
+const rateFmt = new Intl.NumberFormat('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Exchange rate EGP per SAR: "١٣٫١٩ ج.م / ريال" · plain → "١٣٫١٩" */
+export function fmtRate(n: number | null | undefined, plain = false): string {
+  if (!n || !isFinite(n)) return '—';
+  return plain ? rateFmt.format(n) : `${rateFmt.format(n)} ج.م / ريال`;
 }
 
 /** Short form for charts / tight spaces: ١٫٢٥ م / ٤٥٫٠ ألف */

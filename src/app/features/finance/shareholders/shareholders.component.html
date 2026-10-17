@@ -4,8 +4,8 @@
 
   <div class="section-hdr">
     <div>
-      <h2>👥 المساهمون — الأقساط والمسدد</h2>
-      <p>المسدد يُحسب تلقائياً من دفتر اليومية (البند = مساهمة شريك) ويُوزَّع على جدول الأقساط بالترتيب</p>
+      <h2>👥 المساهمون — الأقساط والمسدد <span class="badge badge-gold" style="font-size:.75rem;vertical-align:middle">بالريال السعودي</span></h2>
+      <p>الأقساط والمسدد بالريال السعودي (ر.س). المسدد يُحسب من حركات «مساهمة شريك» في دفتر اليومية ويُوزَّع على الأقساط بالترتيب، ويظهر بجانبه المبلغ المستلم بالجنيه.</p>
     </div>
     <button class="btn btn-ghost btn-sm" (click)="load()">🔄 تحديث</button>
   </div>
@@ -14,20 +14,29 @@
   <div class="kpi-grid mb-3">
     <div class="kpi blue"><div class="kpi-icon">📋</div><div>
       <div class="kpi-label">المطلوب حسب جدول الأقساط</div>
-      <div class="kpi-value">{{ d.totalRequired | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+      <div class="kpi-value">{{ d.totalRequired | sar:'plain' }}<span class="kpi-unit">ر.س</span></div>
     </div></div>
     <div class="kpi green"><div class="kpi-icon">✅</div><div>
       <div class="kpi-label">المسدد فعلياً (من دفتر اليومية)</div>
-      <div class="kpi-value amount-pos">{{ d.totalPaid | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+      <div class="kpi-value amount-pos">{{ d.totalPaid | sar:'plain' }}<span class="kpi-unit">ر.س</span></div>
     </div></div>
     <div class="kpi gold"><div class="kpi-icon">⚖️</div><div>
       <div class="kpi-label">الفرق (المسدد − المطلوب)</div>
-      <div class="kpi-value" [class.amount-pos]="d.totalBalance >= 0" [class.amount-neg]="d.totalBalance < 0">{{ d.totalBalance | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+      <div class="kpi-value" [class.amount-pos]="d.totalBalance >= 0" [class.amount-neg]="d.totalBalance < 0">{{ d.totalBalance | sar:'plain' }}<span class="kpi-unit">ر.س</span></div>
     </div></div>
     <div class="kpi red"><div class="kpi-icon">⏰</div><div>
       <div class="kpi-label">متأخرات مستحقة</div>
-      <div class="kpi-value" [class.amount-neg]="d.totalOverdue > 0">{{ d.totalOverdue | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+      <div class="kpi-value" [class.amount-neg]="d.totalOverdue > 0">{{ d.totalOverdue | sar:'plain' }}<span class="kpi-unit">ر.س</span></div>
     </div></div>
+    <div class="kpi purple"><div class="kpi-icon">💱</div><div>
+      <div class="kpi-label">المستلم بالجنيه (دفتر اليومية)</div>
+      <div class="kpi-value">{{ d.totalPaidEgp | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+      <div class="kpi-sub">متوسط السعر {{ d.averageRate | rate }}</div>
+    </div></div>
+  </div>
+
+  <div class="info-banner mb-3" *ngIf="d.contributionsWithoutSar > 0" style="background:rgba(244,67,54,.08);border-color:rgba(244,67,54,.3);color:#ef9a9a">
+    ⚠ يوجد {{ d.contributionsWithoutSar | egp:'plain' }} حركة «مساهمة شريك» بدون مبلغ بالريال — لا تُحتسب في المسدد بالريال حتى يتم تعديلها من دفتر اليومية وإدخال المبلغ بالريال.
   </div>
 
   <!-- Shareholder cards -->
@@ -53,19 +62,24 @@
       </div>
 
       <div class="sh-figs">
-        <div><div class="l">المطلوب</div><div class="v">{{ sh.totalRequired | egp:'plain' }}</div></div>
-        <div><div class="l">المسدد</div><div class="v text-success">{{ sh.totalPaid | egp:'plain' }}</div></div>
+        <div><div class="l">المطلوب</div><div class="v">{{ sh.totalRequired | sar:'plain' }} <small class="u">ر.س</small></div></div>
+        <div><div class="l">المسدد</div><div class="v text-success">{{ sh.totalPaid | sar:'plain' }} <small class="u">ر.س</small></div></div>
         <div><div class="l">{{ sh.balance >= 0 ? 'زيادة' : 'متبقي' }}</div>
-          <div class="v" [class.text-success]="sh.balance >= 0" [class.text-danger]="sh.balance < 0">{{ (sh.balance < 0 ? -sh.balance : sh.balance) | egp:'plain' }}</div></div>
+          <div class="v" [class.text-success]="sh.balance >= 0" [class.text-danger]="sh.balance < 0">{{ (sh.balance < 0 ? -sh.balance : sh.balance) | sar:'plain' }} <small class="u">ر.س</small></div></div>
+      </div>
+
+      <div class="sh-egp">
+        <span>المستلم بالجنيه: <b>{{ sh.totalPaidEgp | egp }}</b></span>
+        <span>متوسط السعر: <b>{{ sh.averageRate | rate }}</b></span>
       </div>
 
       <div class="info-banner" *ngIf="sh.overdueAmount > 0" style="background:rgba(244,67,54,.08);border-color:rgba(244,67,54,.3);color:#ef9a9a">
-        ⚠ متأخرات مستحقة: <b>{{ sh.overdueAmount | egp }}</b>
+        ⚠ متأخرات مستحقة: <b>{{ sh.overdueAmount | sar }}</b>
       </div>
 
       <div class="actions-row">
         <button class="btn btn-primary btn-sm" (click)="openContribution(sh)" *ngIf="auth.canWriteFinance()">➕ تسجيل مساهمة</button>
-        <button class="btn btn-ghost btn-sm" (click)="detail.set(sh)">📋 كشف الحساب</button>
+        <button class="btn btn-ghost btn-sm" (click)="openDetail(sh)">📋 كشف الحساب</button>
         <a class="btn btn-ghost btn-sm" routerLink="../journal" [queryParams]="{ shareholderId: sh.id }">📒 الحركات</a>
       </div>
     </div>
@@ -74,7 +88,7 @@
   <!-- Schedule matrix -->
   <div class="card mb-3">
     <div class="card-header">
-      <h3>🗓️ جدول الأقساط المستحقة (ج.م)</h3>
+      <h3>🗓️ جدول الأقساط المستحقة (ر.س)</h3>
       <span class="badge badge-gold">التوزيع: المسدد يغطي الأقساط بالترتيب</span>
     </div>
     <div class="table-wrap">
@@ -95,7 +109,7 @@
             </td>
             <td class="num" *ngFor="let sh of d.shareholders">
               <ng-container *ngIf="installmentOf(sh, row.number) as i; else none">
-                <span class="fw-bold">{{ i.amount | egp:'plain' }}</span>
+                <span class="fw-bold">{{ i.amount | sar:'plain' }}</span>
                 <span class="st"><span class="badge" [class]="badge(i.status)">{{ statusLabel[i.status] }}</span></span>
               </ng-container>
               <ng-template #none><span class="text-muted">—</span></ng-template>
@@ -103,11 +117,15 @@
           </tr>
           <tr class="total-row">
             <td colspan="2">الإجمالي المطلوب</td>
-            <td class="num" *ngFor="let sh of d.shareholders">{{ scheduleTotal(sh) | egp:'plain' }}</td>
+            <td class="num" *ngFor="let sh of d.shareholders">{{ scheduleTotal(sh) | sar:'plain' }}</td>
           </tr>
           <tr class="total-row">
-            <td colspan="2">المسدد فعلياً</td>
-            <td class="num text-success" *ngFor="let sh of d.shareholders">{{ sh.totalPaid | egp:'plain' }}</td>
+            <td colspan="2">المسدد فعلياً (ر.س)</td>
+            <td class="num text-success" *ngFor="let sh of d.shareholders">{{ sh.totalPaid | sar:'plain' }}</td>
+          </tr>
+          <tr>
+            <td colspan="2" class="text-muted">المستلم بالجنيه (ج.م)</td>
+            <td class="num text-muted" *ngFor="let sh of d.shareholders">{{ sh.totalPaidEgp | egp:'plain' }}</td>
           </tr>
         </tbody>
       </table>
@@ -116,7 +134,7 @@
 
   <!-- Paid by year -->
   <div class="card">
-    <div class="card-header"><h3>📆 المساهمات المسددة حسب السنة (ج.م)</h3></div>
+    <div class="card-header"><h3>📆 المساهمات المسددة حسب السنة</h3><span class="badge badge-gold">ر.س — وتحتها المستلم بالجنيه</span></div>
     <div class="table-wrap">
       <table class="tbl compact">
         <thead>
@@ -125,13 +143,24 @@
         <tbody>
           <tr *ngFor="let y of d.years">
             <td class="fw-bold">{{ yearLabel(y) }}</td>
-            <td class="num" *ngFor="let sh of d.shareholders" [class.text-muted]="!paidIn(sh, y)">{{ paidIn(sh, y) | egp:'plain' }}</td>
-            <td class="num fw-800">{{ paidInYear(y) | egp:'plain' }}</td>
+            <td class="num" *ngFor="let sh of d.shareholders" [class.text-muted]="!paidIn(sh, y)">
+              <div>{{ paidIn(sh, y) | sar:'plain' }}</div>
+              <div class="cell-sub">{{ paidEgpIn(sh, y) | egp }}</div>
+            </td>
+            <td class="num fw-800">
+              <div>{{ paidInYear(y) | sar:'plain' }}</div>
+              <div class="cell-sub">{{ paidEgpInYear(y) | egp }}</div>
+            </td>
           </tr>
           <tr class="total-row">
-            <td>الإجمالي</td>
-            <td class="num" *ngFor="let sh of d.shareholders">{{ sh.totalPaid | egp:'plain' }}</td>
-            <td class="num">{{ d.totalPaid | egp:'plain' }}</td>
+            <td>الإجمالي (ر.س)</td>
+            <td class="num" *ngFor="let sh of d.shareholders">{{ sh.totalPaid | sar:'plain' }}</td>
+            <td class="num">{{ d.totalPaid | sar:'plain' }}</td>
+          </tr>
+          <tr class="total-row">
+            <td>المستلم (ج.م)</td>
+            <td class="num" *ngFor="let sh of d.shareholders">{{ sh.totalPaidEgp | egp:'plain' }}</td>
+            <td class="num">{{ d.totalPaidEgp | egp:'plain' }}</td>
           </tr>
         </tbody>
       </table>
@@ -148,15 +177,16 @@
     </div>
     <div class="modal-body">
       <div class="kpi-grid mb-2">
-        <div class="kpi blue"><div><div class="kpi-label">المطلوب</div><div class="kpi-value">{{ sh.totalRequired | egp }}</div></div></div>
-        <div class="kpi green"><div><div class="kpi-label">المسدد</div><div class="kpi-value amount-pos">{{ sh.totalPaid | egp }}</div></div></div>
+        <div class="kpi blue"><div><div class="kpi-label">المطلوب</div><div class="kpi-value">{{ sh.totalRequired | sar }}</div></div></div>
+        <div class="kpi green"><div><div class="kpi-label">المسدد</div><div class="kpi-value amount-pos">{{ sh.totalPaid | sar }}</div></div></div>
         <div class="kpi gold"><div><div class="kpi-label">الفرق</div>
-          <div class="kpi-value" [class.amount-pos]="sh.balance >= 0" [class.amount-neg]="sh.balance < 0">{{ sh.balance | egp }}</div></div></div>
-        <div class="kpi purple"><div><div class="kpi-label">نسبة الملكية</div><div class="kpi-value">{{ sh.ownershipPercentage | pct }}</div></div></div>
+          <div class="kpi-value" [class.amount-pos]="sh.balance >= 0" [class.amount-neg]="sh.balance < 0">{{ sh.balance | sar }}</div></div></div>
+        <div class="kpi purple"><div><div class="kpi-label">المستلم بالجنيه</div><div class="kpi-value">{{ sh.totalPaidEgp | egp }}</div>
+          <div class="kpi-sub">متوسط السعر {{ sh.averageRate | rate }} • حصة {{ sh.ownershipPercentage | pct }}</div></div></div>
       </div>
 
       <div class="d-flex justify-between align-center mb-1">
-        <div class="section-title" style="margin:0">🗓️ الأقساط</div>
+        <div class="section-title" style="margin:0">🗓️ الأقساط (ر.س)</div>
         <div class="actions-row">
           <button class="btn btn-ghost btn-sm" (click)="openProfile(sh)" *ngIf="auth.isAdminUser()">✏️ بيانات المساهم</button>
           <button class="btn btn-ghost btn-sm" (click)="openInstallment(sh, null)" *ngIf="auth.isAdminUser()">➕ قسط</button>
@@ -174,9 +204,9 @@
                 <div class="cell-sub" *ngIf="i.notes">{{ i.notes }}</div>
               </td>
               <td class="text-sm">{{ i.dueDate ? (i.dueDate | arDate) : 'غير محدد' }}</td>
-              <td class="num">{{ i.amount | egp:'plain' }}</td>
-              <td class="num text-success">{{ i.allocated | egp:'plain' }}</td>
-              <td class="num" [class.text-danger]="i.remaining > 0">{{ i.remaining | egp:'plain' }}</td>
+              <td class="num">{{ i.amount | sar:'plain' }}</td>
+              <td class="num text-success">{{ i.allocated | sar:'plain' }}</td>
+              <td class="num" [class.text-danger]="i.remaining > 0">{{ i.remaining | sar:'plain' }}</td>
               <td><span class="badge" [class]="badge(i.status)">{{ statusLabel[i.status] }}</span></td>
               <td *ngIf="auth.isAdminUser()">
                 <div class="d-flex gap-1">
@@ -189,9 +219,36 @@
         </table>
       </div>
 
+      <div class="section-title">💵 الدفعات المسددة</div>
+      <div class="loading-wrap" *ngIf="!detailContributions()"><div class="spinner"></div></div>
+      <div class="table-wrap mb-2" *ngIf="detailContributions() as rows">
+        <table class="tbl compact">
+          <thead><tr><th>التاريخ</th><th>البيان</th><th class="num">المسدد (ر.س)</th><th class="num">المستلم (ج.م)</th><th class="num">السعر</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let c of rows">
+              <td class="text-sm">{{ c.transactionDate | arDate:'short' }}</td>
+              <td>{{ c.description }}</td>
+              <td class="num fw-bold">
+                <span *ngIf="c.amountSar">{{ c.amountSar | sar:'plain' }}</span>
+                <span *ngIf="!c.amountSar" class="badge badge-danger">غير محدد</span>
+              </td>
+              <td class="num">{{ c.amount | egp:'plain' }}</td>
+              <td class="num text-sm text-muted">{{ rateOf(c) | rate:'plain' }}</td>
+            </tr>
+            <tr *ngIf="!rows.length"><td colspan="5" class="text-center text-muted">لا توجد دفعات مسجلة</td></tr>
+            <tr class="total-row" *ngIf="rows.length">
+              <td colspan="2">الإجمالي</td>
+              <td class="num">{{ sh.totalPaid | sar:'plain' }}</td>
+              <td class="num">{{ sh.totalPaidEgp | egp:'plain' }}</td>
+              <td class="num text-sm">{{ sh.averageRate | rate:'plain' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <div class="info-banner">
-        ℹ️ قيم الأقساط محوّلة من جدول الإكسيل الأصلي (بالريال) إلى الجنيه المصري — يمكن للمدير تعديل أي قسط.
-        المسدد يأتي من حركات «مساهمة شريك» في دفتر اليومية.
+        ℹ️ الأقساط بالريال السعودي كما في ملف الإكسيل — يمكن للمدير تعديل أي قسط.
+        المسدد بالريال يأتي من حركات «مساهمة شريك» في دفتر اليومية (الجنيه المستلم يدخل الخزينة).
         <a routerLink="../journal" [queryParams]="{ shareholderId: sh.id }" (click)="detail.set(null)" class="text-gold" style="margin-inline-start:auto;white-space:nowrap">عرض الحركات ←</a>
       </div>
     </div>
@@ -203,11 +260,16 @@
   <div class="modal" (click)="$event.stopPropagation()">
     <div class="modal-header"><h3>➕ تسجيل مساهمة — {{ sh.nameAr }}</h3><button class="close-btn" (click)="contributeFor.set(null)">✕</button></div>
     <div class="modal-body">
-      <div class="info-banner gold mb-2">تُسجَّل كحركة «وارد» على بند «مساهمة شريك» في دفتر اليومية وتُحتسب في الرصيد مباشرة.</div>
+      <div class="info-banner gold mb-2">أدخل المبلغ المدفوع بالريال (يُخصم من الأقساط) والمبلغ المستلم فعلياً بالجنيه (يُسجَّل كحركة «وارد» في دفتر اليومية ويدخل رصيد الخزينة).</div>
       <form [formGroup]="contributionForm" class="modal-form">
-        <div class="grid-2">
+        <div class="grid-3">
           <div class="form-group"><label>التاريخ <span class="req">*</span></label><input type="date" class="form-control" formControlName="date" [max]="today"></div>
-          <div class="form-group"><label>المبلغ (ج.م) <span class="req">*</span></label><input type="number" class="form-control" formControlName="amount" min="1"></div>
+          <div class="form-group"><label>المبلغ المدفوع (ر.س) <span class="req">*</span></label><input type="number" class="form-control" formControlName="amountSar" min="1" placeholder="بالريال"></div>
+          <div class="form-group"><label>المبلغ المستلم (ج.م) <span class="req">*</span></label><input type="number" class="form-control" formControlName="amount" min="1" placeholder="بالجنيه"></div>
+        </div>
+        <div class="rate-box mb-2">
+          <span>سعر التحويل الفعلي</span>
+          <b>{{ formRate() ? (formRate() | rate) : 'أدخل المبلغين' }}</b>
         </div>
         <div class="form-group"><label>البيان</label><input class="form-control" formControlName="description" [placeholder]="'مساهمة شريك — ' + sh.nameAr"></div>
         <div class="grid-2">
@@ -266,7 +328,7 @@
           <div class="form-group"><label>البيان</label><input class="form-control" formControlName="label"></div>
           <div class="form-group"><label>تاريخ الاستحقاق</label><input type="date" class="form-control" formControlName="dueDate"></div>
         </div>
-        <div class="form-group"><label>القيمة (ج.م)</label><input type="number" class="form-control" formControlName="amount" min="0"></div>
+        <div class="form-group"><label>القيمة (ر.س)</label><input type="number" class="form-control" formControlName="amount" min="0"></div>
         <div class="form-group"><label>ملاحظات</label><input class="form-control" formControlName="notes"></div>
       </form>
     </div>

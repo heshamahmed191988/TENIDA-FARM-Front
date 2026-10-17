@@ -5,7 +5,7 @@ import { ToastrService } from 'ngx-toastr';
 import { ApiService } from '../../../core/services/api.service';
 import { FinanceStateService } from '../../../core/services/finance-state.service';
 import { JournalEntry, JournalEntryInput, LOOKUP_CODES, TransactionType } from '../../../core/models/models';
-import { apiError, fmtMoney, todayIso } from '../../../core/utils/format';
+import { apiError, fmtMoney, fmtRate, todayIso } from '../../../core/utils/format';
 import { AttachmentUploaderComponent } from '../../../shared/components/attachments/attachment-uploader.component';
 
 /**
@@ -46,6 +46,8 @@ export class EntryFormComponent implements OnInit {
     activityId: ['', Validators.required],
     description: ['', [Validators.required, Validators.maxLength(500)]],
     amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
+    /** «مساهمة شريك» only: amount paid in SAR (counts against the installment schedule). */
+    amountSar: [null as number | null],
     party: [''],
     paymentMethodId: [''],
     documentNumber: [''],
@@ -73,7 +75,7 @@ export class EntryFormComponent implements OnInit {
     const e = this.entry;
     const src: Partial<JournalEntryInput> = e ? {
       transactionDate: e.transactionDate.slice(0, 10), type: e.type, itemId: e.itemId, activityId: e.activityId,
-      description: e.description, amount: e.amount, shareholderId: e.shareholderId, workerId: e.workerId,
+      description: e.description, amount: e.amount, amountSar: e.amountSar, shareholderId: e.shareholderId, workerId: e.workerId,
       paymentMethodId: e.paymentMethodId, documentNumber: e.documentNumber, notes: e.notes,
     } : this.preset;
 
@@ -84,6 +86,7 @@ export class EntryFormComponent implements OnInit {
       activityId: src.activityId ?? '',
       description: src.description ?? '',
       amount: src.amount ?? null,
+      amountSar: src.amountSar ?? null,
       party: src.shareholderId ? `s:${src.shareholderId}` : src.workerId ? `w:${src.workerId}` : '',
       paymentMethodId: src.paymentMethodId ?? '',
       documentNumber: src.documentNumber ?? '',
@@ -126,6 +129,17 @@ export class EntryFormComponent implements OnInit {
 
   amountPreview(): string { return fmtMoney(this.form.value.amount || 0); }
 
+  sarError(): string | null {
+    if (this.partyMode() !== 'shareholder') return null;
+    return Number(this.form.value.amountSar) > 0 ? null : 'أدخل المبلغ المدفوع بالريال السعودي';
+  }
+
+  /** EGP per SAR for the contribution being entered. */
+  ratePreview(): string {
+    const sar = Number(this.form.value.amountSar), egp = Number(this.form.value.amount);
+    return sar > 0 && egp > 0 ? fmtRate(egp / sar) : '';
+  }
+
   save() {
     this.submitted.set(true);
     if (this.uploading()) { this.toastr.info('انتظر حتى يكتمل رفع المستندات'); return; }
@@ -134,9 +148,9 @@ export class EntryFormComponent implements OnInit {
       this.toastr.warning('أرفق صورة أو ملف PDF يثبت الحركة');
       return;
     }
-    if (this.form.invalid || this.partyError()) {
+    if (this.form.invalid || this.partyError() || this.sarError()) {
       this.form.markAllAsTouched();
-      this.toastr.warning(this.partyError() ?? 'أكمل الحقول المطلوبة');
+      this.toastr.warning(this.partyError() ?? this.sarError() ?? 'أكمل الحقول المطلوبة');
       return;
     }
     const v = this.form.getRawValue();
@@ -148,6 +162,7 @@ export class EntryFormComponent implements OnInit {
       activityId: v.activityId!,
       description: v.description!.trim(),
       amount: Number(v.amount),
+      amountSar: this.partyMode() === 'shareholder' ? Number(v.amountSar) : null,
       shareholderId: party.startsWith('s:') ? party.slice(2) : null,
       workerId: party.startsWith('w:') ? party.slice(2) : null,
       paymentMethodId: v.paymentMethodId || null,

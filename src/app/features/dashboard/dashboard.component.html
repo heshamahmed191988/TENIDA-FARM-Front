@@ -48,7 +48,7 @@
         <div class="kpi-icon">⚠️</div>
         <div>
           <div class="kpi-label">متأخرات الشركاء</div>
-          <div class="kpi-value" [class.amount-neg]="d.totalOverdueInstallments > 0">{{ d.totalOverdueInstallments | egp:'plain' }}<span class="kpi-unit">ج.م</span></div>
+          <div class="kpi-value" [class.amount-neg]="d.totalOverdueInstallments > 0">{{ d.totalOverdueInstallments | sar:'plain' }}<span class="kpi-unit">ر.س</span></div>
           <div class="kpi-sub">{{ d.totalOverdueInstallments > 0 ? 'يحتاج متابعة' : 'لا توجد متأخرات' }}</div>
         </div>
       </a>
@@ -98,7 +98,7 @@
                 <div class="d-flex justify-between align-center mb-1">
                   <span class="fw-bold text-sm">{{ sh.nameAr }}</span>
                   <span class="text-sm" [class.text-success]="sh.balance >= 0" [class.text-danger]="sh.balance < 0">
-                    {{ sh.balance >= 0 ? '✓ ملتزم' : '⚠ متبقي ' + (-sh.balance | egp) }}
+                    {{ sh.balance >= 0 ? '✓ ملتزم' : '⚠ متبقي ' + (-sh.balance | sar) }}
                   </span>
                 </div>
                 <div class="progress">
@@ -106,7 +106,7 @@
                        [style.background]="sh.balance < 0 ? 'linear-gradient(90deg,#c62828,#e57373)' : ''"></div>
                 </div>
                 <div class="d-flex justify-between mt-1">
-                  <span class="text-sm text-muted">{{ sh.totalPaid | egp:'plain' }} من {{ sh.totalRequired | egp }}</span>
+                  <span class="text-sm text-muted">{{ sh.totalPaid | sar:'plain' }} من {{ sh.totalRequired | sar }}</span>
                   <span class="text-sm text-gold fw-800">{{ sh.progressPct | pct }}</span>
                 </div>
               </div>

@@ -159,6 +159,9 @@
                   <div><span class="info-label">رقم المستند:</span> {{ t.documentNumber || '—' }}</div>
                   <div><span class="info-label">أُضيفت بواسطة:</span> {{ t.createdBy || '—' }} • {{ t.createdAt | arDate }}</div>
                   <div><span class="info-label">آخر تعديل:</span> {{ t.updatedAt ? (t.updatedAt | arDate) : '—' }}</div>
+                  <div *ngIf="t.itemCode === 'PartnerContribution'"><span class="info-label">المسدد بالريال:</span>
+                    <b *ngIf="t.amountSar">{{ t.amountSar | sar }}</b><span *ngIf="t.amountSar" class="text-muted"> (سعر {{ t.amount / t.amountSar | rate:'plain' }})</span>
+                    <span *ngIf="!t.amountSar" class="badge badge-danger">غير محدد — عدّل الحركة</span></div>
                   <div style="grid-column:1/-1" *ngIf="t.notes"><span class="info-label">ملاحظات:</span> {{ t.notes }}</div>
                 </div>
               </td>

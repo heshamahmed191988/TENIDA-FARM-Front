@@ -66,6 +66,8 @@ export interface JournalEntry {
   createdBy?: string | null;
   updatedAt?: string | null;
   attachmentCount: number;
+  /** Partner contributions only: amount paid in Saudi riyals. */
+  amountSar?: number | null;
 }
 
 /** Proof document (image / PDF) attached to a journal movement. */
@@ -87,6 +89,8 @@ export interface JournalEntryInput {
   activityId: string;
   description: string;
   amount: number;
+  /** Required when the item is «مساهمة شريك»: amount paid in SAR. */
+  amountSar?: number | null;
   shareholderId?: string | null;
   workerId?: string | null;
   paymentMethodId?: string | null;
@@ -222,6 +226,8 @@ export interface PayrollReport {
 }
 
 // ── Shareholders ──────────────────────────────────────────────────
+// Installments, required/paid/remaining/overdue are in Saudi riyals (SAR).
+// Contributions are booked in the journal in EGP and carry their SAR amount.
 export interface InstallmentPosition {
   id: string;
   installmentNumber: number;
@@ -251,6 +257,12 @@ export interface ShareholderPosition {
   lastContributionDate?: string | null;
   paidByYear: YearAmount[];
   installments: InstallmentPosition[];
+  /** EGP actually received into the treasury. */
+  totalPaidEgp: number;
+  /** Σ EGP ÷ Σ SAR of the contributions. */
+  averageRate?: number | null;
+  contributionsWithoutSar: number;
+  paidEgpByYear: YearAmount[];
 }
 
 export interface ShareholdersOverview {
@@ -260,6 +272,9 @@ export interface ShareholdersOverview {
   totalBalance: number;
   years: number[];
   shareholders: ShareholderPosition[];
+  totalPaidEgp: number;
+  averageRate?: number | null;
+  contributionsWithoutSar: number;
 }
 
 export interface ShareholderInput {
@@ -271,7 +286,12 @@ export interface InstallmentInput {
 }
 export interface ContributionInput {
   attachmentIds?: string[];
-  date: string; amount: number; description?: string | null; activityId?: string | null;
+  date: string;
+  /** Paid in SAR — counts against the installment schedule. */
+  amountSar: number;
+  /** Received in EGP — booked in the journal. */
+  amount: number;
+  description?: string | null; activityId?: string | null;
   paymentMethodId?: string | null; documentNumber?: string | null; notes?: string | null;
 }
 
@@ -384,6 +404,7 @@ export interface FarmSettings {
 export interface FarmSettingsInput { projectName: string; openingBalance: number; ledgerStartDate: string; requireAttachments: boolean; }
 
 // ── Dashboard ─────────────────────────────────────────────────────
+/** Amounts in SAR. */
 export interface ShareholderMini {
   id: string; nameAr: string; totalRequired: number; totalPaid: number; balance: number; progressPct: number;
 }
@@ -398,6 +419,7 @@ export interface DashboardData {
   incomeItems: AmountShareRow[];
   activities: ActivitySummaryRow[];
   shareholders: ShareholderMini[];
+  /** SAR */
   totalOverdueInstallments: number;
   recentMovements: JournalEntry[];
 }
